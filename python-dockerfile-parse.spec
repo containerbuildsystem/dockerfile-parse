@@ -5,11 +5,11 @@
 %global owner DBuildService
 %global project dockerfile-parse
 
-%global commit 23b7638453238288888d86bc5305db01a7379ef3
+%global commit 3a594096260d2f372612c89fc74db1327a700ec6
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-dockerfile-parse
-Version:        0.0.2
+Version:        0.0.3
 Release:        1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
@@ -92,6 +92,9 @@ popd
 %endif # with_python3
 
 %changelog
+* Fri Jun 26 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.3-1
+- 0.0.3
+
 * Fri Jun 26 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.2-1
 - 0.0.2
 
