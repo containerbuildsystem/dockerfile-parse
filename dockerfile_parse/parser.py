@@ -19,14 +19,12 @@ from .constants import DOCKERFILE_FILENAME, PY2
 logger = logging.getLogger(__name__)
 
 class DockerfileParser(object):
-    def __init__(self, git_path, path=''):
-        if git_path.endswith(DOCKERFILE_FILENAME):
-            self.dockerfile_path = git_path
+    def __init__(self, path=None):
+        path = path or '.'
+        if path.endswith(DOCKERFILE_FILENAME):
+            self.dockerfile_path = path
         else:
-            if path.endswith(DOCKERFILE_FILENAME):
-                self.dockerfile_path = os.path.join(git_path, path)
-            else:
-                self.dockerfile_path = os.path.join(git_path, path, DOCKERFILE_FILENAME)
+            self.dockerfile_path = os.path.join(path, DOCKERFILE_FILENAME)
 
     @staticmethod
     def b2u(string):
