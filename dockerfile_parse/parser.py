@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 class DockerfileParser(object):
     def __init__(self, path=None):
+        """
+        Initialize path to Dockerfile
+        :param path: path to (directory with) Dockerfile
+        """
         path = path or '.'
         if path.endswith(DOCKERFILE_FILENAME):
             self.dockerfile_path = path
@@ -42,6 +46,9 @@ class DockerfileParser(object):
 
     @property
     def lines(self):
+        """
+        :return: list containing lines (unicode) from Dockerfile
+        """
         try:
             with open(self.dockerfile_path, 'r') as dockerfile:
                 return [self.b2u(l) for l in dockerfile.readlines()]
@@ -51,6 +58,10 @@ class DockerfileParser(object):
 
     @lines.setter
     def lines(self, lines):
+        """
+        Fill Dockerfile content with specified lines
+        :param lines: list of lines to be written to Dockerfile
+        """
         try:
             with open(self.dockerfile_path, 'w') as dockerfile:
                 dockerfile.writelines([self.u2b(l) for l in lines])
@@ -60,6 +71,9 @@ class DockerfileParser(object):
 
     @property
     def content(self):
+        """
+        :return: string (unicode) with Dockerfile content
+        """
         try:
             with open(self.dockerfile_path, 'r') as dockerfile:
                 return self.b2u(dockerfile.read())
@@ -69,6 +83,10 @@ class DockerfileParser(object):
 
     @content.setter
     def content(self, content):
+        """
+        Overwrite Dockerfile with specified content
+        :param content: string to be written to Dockerfile
+        """
         try:
             with open(self.dockerfile_path, 'w') as dockerfile:
                 dockerfile.write(self.u2b(content))
@@ -136,18 +154,27 @@ class DockerfileParser(object):
 
     @property
     def json(self):
+        """
+        :return: JSON formatted string with instructions & values from Dockerfile
+        """
         insndescs = [{insndesc['instruction']: insndesc['value']} for insndesc in self.structure]
         return json.dumps(insndescs)
 
     @property
     def baseimage(self):
+        """
+        :return: base image, i.e. value of FROM instruction
+        """
         for insndesc in self.structure:
             if insndesc['instruction'] == 'FROM':
                 return insndesc['value']
 
     def _shlex_split(self, string):
+        """
+        Python2's shlex doesn't like unicode, so we have to convert the string
+        into bytes, run shlex.split() and convert it back to unicode.
+        """
         if PY2 and isinstance(string, unicode):
-            # Python2's shlex doesn't like unicode
             string = self.u2b(string)
             # this takes care of quotes
             splits = shlex.split(string)
@@ -157,8 +184,9 @@ class DockerfileParser(object):
 
     @property
     def labels(self):
-        """ return dict of labels from dockerfile
-        :return: dictionary of label:value or label:'' if there's no value
+        """
+        LABELs from Dockerfile
+        :return: dictionary of label:value (value might be '')
         """
         labels = {}
         for insndesc in self.structure:

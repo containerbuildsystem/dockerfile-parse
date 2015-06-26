@@ -5,10 +5,6 @@ dockerfile-parse
 
 Python library for parsing Dockerfile files.
 
-## Features
-
- * 
-
 ## Installation
 
 ### from git
@@ -27,12 +23,10 @@ $ sudo pip install .
 from pprint import pprint
 from dockerfile_parse import DockerfileParser
 dfp=DockerfileParser()
-dfp.lines = ["# comment\n",
-             " From  \\\n",
-             "   base\n",
-             " label  foo  \\\n",
-             "    bar  \n",
-             "USER  no-newline"]
+dfp.content = """\
+From  base
+LABEL foo="bar baz"
+USER  me"""
 pprint(dfp.structure)
 pprint(dfp.json)
 pprint(dfp.labels)
