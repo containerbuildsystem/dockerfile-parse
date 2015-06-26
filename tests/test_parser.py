@@ -11,7 +11,7 @@ from __future__ import unicode_literals
 
 import pytest
 
-from dockerfile_parser import DockerfileParser
+from dockerfile_parse import DockerfileParser
 
 NON_ASCII = "žluťoučký"
 

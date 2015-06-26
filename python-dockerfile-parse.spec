@@ -3,12 +3,12 @@
 %endif
 
 %global owner DBuildService
-%global project dockerfile
+%global project dockerfile-parse
 
 %global commit abcdefg
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
-Name:           python-dockerfile
+Name:           python-dockerfile-parse
 Version:        0.0.1
 Release:        1%{?dist}
 
@@ -33,17 +33,17 @@ BuildRequires:  python3-setuptools
 
 
 %if 0%{?with_python3}
-%package -n python3-dockerfile
+%package -n python3-dockerfile-parse
 Summary:        Python 3 library for Dockerfile manipulation
 Group:          Development/Tools
 License:        BSD
 Requires:       python3-setuptools
 
-%description -n python3-dockerfile
+%description -n python3-dockerfile-parse
 
 
 %prep
-%setup -qn dockerfile-%{commit}
+%setup -qn dockerfile-parse-%{commit}
 %if 0%{?with_python3}
 rm -rf %{py3dir}
 cp -a . %{py3dir}
@@ -80,7 +80,7 @@ popd
 %{python2_sitelib}/dock-%{version}-py2.*.egg-info
 
 %if 0%{?with_python3}
-%files -n python3-dockerfile
+%files -n python3-dockerfile-parse
 %doc README.md
 %{!?_licensedir:%global license %%doc}
 %license LICENSE

@@ -1,7 +1,7 @@
-dockerfile-parser
+dockerfile-parse
 ====
 
-[![Build Status](https://travis-ci.org/DBuildService/dockerfile-parser.svg?branch=master)](https://travis-ci.org/DBuildService/dockerfile-parser)
+[![Build Status](https://travis-ci.org/DBuildService/dockerfile-parse.svg?branch=master)](https://travis-ci.org/DBuildService/dockerfile-parse)
 
 Python library for parsing Dockerfile files.
 
@@ -13,18 +13,18 @@ Python library for parsing Dockerfile files.
 
 ### from git
 
-Clone this git repo and install dockerfile-parser using python installer:
+Clone this git repo and install dockerfile-parse using python installer:
 
 ```shell
-$ git clone https://github.com/DBuildService/dockerfile-parser.git
-$ cd dockerfile-parser
+$ git clone https://github.com/DBuildService/dockerfile-parse.git
+$ cd dockerfile-parse
 $ sudo pip install .
 ```
 
 ## Usage
 
 ```python
-from dockerfile_parser import DockerfileParser
+from dockerfile_parse import DockerfileParser
 dfp=DockerfileParser('.')
 dfp.lines = ["# comment\n",
              " From  \\\n",

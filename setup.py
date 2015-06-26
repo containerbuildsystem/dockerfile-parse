@@ -26,12 +26,12 @@ def _install_requirements():
     return requirements
 
 setup(
-    name='dockerfile-parser',
+    name='dockerfile-parse',
     version='0.0.1',
     description='Python library for Dockerfile manipulation',
     author='Jiri Popelka',
     author_email='jpopelka@redhat.com',
-    url='https://github.com/DBuildService/dockerfile',
+    url='https://github.com/DBuildService/dockerfile-parse',
     license="BSD",
     packages=find_packages(exclude=["tests"]),
     install_requires=_install_requirements(),
