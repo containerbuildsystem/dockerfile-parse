@@ -9,10 +9,11 @@ of the BSD license. See the LICENSE file for details.
 
 from __future__ import print_function, unicode_literals
 
+import io
+import logging
 import os
 import re
 import shlex
-import logging
 from .constants import DOCKERFILE_FILENAME, PY2
 
 logger = logging.getLogger(__name__)
@@ -27,25 +28,11 @@ class DockerfileParser(object):
             else:
                 self.dockerfile_path = os.path.join(git_path, path, DOCKERFILE_FILENAME)
 
-    @staticmethod
-    def b2u(string):
-        """ bytes to unicode """
-        if isinstance(string, bytes):
-            return string.decode('utf-8')
-        return string
-
-    @staticmethod
-    def u2b(string):
-        """ unicode to bytes (Python 2 only) """
-        if PY2 and isinstance(string, unicode):
-            return string.encode('utf-8')
-        return string
-
     @property
     def lines(self):
         try:
-            with open(self.dockerfile_path, 'r') as dockerfile:
-                return [self.b2u(l) for l in dockerfile.readlines()]
+            with io.open(self.dockerfile_path, 'r') as dockerfile:
+                return dockerfile.readlines()
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve lines from dockerfile: %s" % repr(ex))
             raise
@@ -53,8 +40,8 @@ class DockerfileParser(object):
     @lines.setter
     def lines(self, lines):
         try:
-            with open(self.dockerfile_path, 'w') as dockerfile:
-                dockerfile.writelines([self.u2b(l) for l in lines])
+            with io.open(self.dockerfile_path, 'w') as dockerfile:
+                dockerfile.writelines(lines)
         except (IOError, OSError) as ex:
             logger.error("Couldn't write lines to dockerfile: %s" % repr(ex))
             raise
@@ -62,8 +49,8 @@ class DockerfileParser(object):
     @property
     def content(self):
         try:
-            with open(self.dockerfile_path, 'r') as dockerfile:
-                return self.b2u(dockerfile.read())
+            with io.open(self.dockerfile_path, 'r') as dockerfile:
+                return dockerfile.read()
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve content of dockerfile: %s" % repr(ex))
             raise
@@ -71,8 +58,8 @@ class DockerfileParser(object):
     @content.setter
     def content(self, content):
         try:
-            with open(self.dockerfile_path, 'w') as dockerfile:
-                dockerfile.write(self.u2b(content))
+            with io.open(self.dockerfile_path, 'w') as dockerfile:
+                dockerfile.write(content)
         except (IOError, OSError) as ex:
             logger.error("Couldn't write content to dockerfile: %s" % repr(ex))
             raise
@@ -141,12 +128,24 @@ class DockerfileParser(object):
                 return insndesc['value']
 
     def _shlex_split(self, string):
+        def b2u(string):
+            """ bytes to unicode """
+            if isinstance(string, bytes):
+                return string.decode('utf-8')
+            return string
+
+        def u2b(string):
+            """ unicode to bytes (Python 2 only) """
+            if PY2 and isinstance(string, unicode):
+                return string.encode('utf-8')
+            return string
+
         if PY2 and isinstance(string, unicode):
             # Python2's shlex doesn't like unicode
-            string = self.u2b(string)
+            string = u2b(string)
             # this takes care of quotes
             splits = shlex.split(string)
-            return map(self.b2u, splits)
+            return map(b2u, splits)
         else:
             return shlex.split(string)
 
