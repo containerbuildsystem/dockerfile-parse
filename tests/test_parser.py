@@ -9,6 +9,7 @@ of the BSD license. See the LICENSE file for details.
 
 from __future__ import unicode_literals
 
+import json
 import pytest
 
 from dockerfile_parse import DockerfileParser
@@ -17,7 +18,7 @@ NON_ASCII = "žluťoučký"
 
 class TestDockerfileParser(object):
 
-    def test_dockerfileparser_non_ascii(self, tmpdir):
+    def test_dockerfileparser(self, tmpdir):
         df_content = """\
 FROM fedora
 CMD {0}""".format(NON_ASCII)
@@ -44,7 +45,7 @@ CMD {0}""".format(NON_ASCII)
                     " # comment\n",
                     " label  foo  \\\n",  # extra ws
                     "    bar  \n",        # extra ws, continuation line
-                    "USER  no-newline"]   # extra ws, no newline
+                    "USER  {0}".format(NON_ASCII)]   # extra ws, no newline
 
         assert df.structure == [{'instruction': 'FROM',
                                  'startline': 1,  # 0-based
@@ -59,19 +60,20 @@ CMD {0}""".format(NON_ASCII)
                                 {'instruction': 'USER',
                                  'startline': 6,
                                  'endline': 6,
-                                 'content': 'USER  no-newline',
-                                 'value': 'no-newline'}]
+                                 'content': 'USER  {0}'.format(NON_ASCII),
+                                 'value': '{0}'.format(NON_ASCII)}]
 
     def test_dockerfile_json(self, tmpdir):
         df = DockerfileParser(str(tmpdir))
-        df.lines = ["# comment\n",
-                    " From  \\\n",
-                    "   base\n",
-                    " label  foo  \\\n",
-                    "    bar  \n",
-                    "USER  no-newline"]
-
-        assert df.json == '[{"FROM": "base"}, {"LABEL": "foo      bar"}, {"USER": "no-newline"}]'
+        df.content = """\
+# comment
+From  base
+LABEL foo="bar baz"
+USER  {0}""".format(NON_ASCII)
+        expected = json.dumps([{"FROM": "base"},
+                               {"LABEL": "foo=\"bar baz\""},
+                               {"USER": "{0}".format(NON_ASCII)}])
+        assert df.json == expected
 
     def test_get_baseimg_from_df(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
