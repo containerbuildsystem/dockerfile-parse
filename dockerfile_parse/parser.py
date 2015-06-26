@@ -10,6 +10,7 @@ of the BSD license. See the LICENSE file for details.
 from __future__ import print_function, unicode_literals
 
 import io
+import json
 import logging
 import os
 import re
@@ -121,6 +122,11 @@ class DockerfileParser(object):
                 instructions.append(current_instruction)
 
         return instructions
+
+    @property
+    def json(self):
+        insndescs = [{insndesc['instruction']: insndesc['value']} for insndesc in self.structure]
+        return json.dumps(insndescs)
 
     def get_baseimage(self):
         for insndesc in self.structure:

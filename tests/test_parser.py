@@ -46,22 +46,32 @@ CMD {0}""".format(NON_ASCII)
                     "    bar  \n",        # extra ws, continuation line
                     "USER  no-newline"]   # extra ws, no newline
 
-        structure = df.structure
-        assert structure == [{'instruction': 'FROM',
-                          'startline': 1,  # 0-based
-                          'endline': 2,
-                          'content': ' From  \\\n   base\n',
-                          'value': 'base'},
-                         {'instruction': 'LABEL',
-                          'startline': 4,
-                          'endline': 5,
-                          'content': ' label  foo  \\\n    bar  \n',
-                          'value': 'foo      bar'},
-                         {'instruction': 'USER',
-                          'startline': 6,
-                          'endline': 6,
-                          'content': 'USER  no-newline',
-                          'value': 'no-newline'}]
+        assert df.structure == [{'instruction': 'FROM',
+                                 'startline': 1,  # 0-based
+                                 'endline': 2,
+                                 'content': ' From  \\\n   base\n',
+                                 'value': 'base'},
+                                {'instruction': 'LABEL',
+                                 'startline': 4,
+                                 'endline': 5,
+                                 'content': ' label  foo  \\\n    bar  \n',
+                                 'value': 'foo      bar'},
+                                {'instruction': 'USER',
+                                 'startline': 6,
+                                 'endline': 6,
+                                 'content': 'USER  no-newline',
+                                 'value': 'no-newline'}]
+
+    def test_dockerfile_json(self, tmpdir):
+        df = DockerfileParser(str(tmpdir))
+        df.lines = ["# comment\n",
+                    " From  \\\n",
+                    "   base\n",
+                    " label  foo  \\\n",
+                    "    bar  \n",
+                    "USER  no-newline"]
+
+        assert df.json == '[{"FROM": "base"}, {"LABEL": "foo      bar"}, {"USER": "no-newline"}]'
 
     def test_get_baseimg_from_df(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
