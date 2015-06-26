@@ -139,7 +139,8 @@ class DockerfileParser(object):
         insndescs = [{insndesc['instruction']: insndesc['value']} for insndesc in self.structure]
         return json.dumps(insndescs)
 
-    def get_baseimage(self):
+    @property
+    def baseimage(self):
         for insndesc in self.structure:
             if insndesc['instruction'] == 'FROM':
                 return insndesc['value']
@@ -154,7 +155,8 @@ class DockerfileParser(object):
         else:
             return shlex.split(string)
 
-    def get_labels(self):
+    @property
+    def labels(self):
         """ return dict of labels from dockerfile
         :return: dictionary of label:value or label:'' if there's no value
         """

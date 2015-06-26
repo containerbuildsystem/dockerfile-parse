@@ -78,7 +78,7 @@ CMD {0}""".format(NON_ASCII)
         df = DockerfileParser(tmpdir_path)
         df.lines = ["From fedora:latest\n",
                     "LABEL a b\n"]
-        base_img = df.get_baseimage()
+        base_img = df.baseimage
         assert base_img.startswith('fedora')
 
     def test_get_labels_from_df(self, tmpdir):
@@ -102,7 +102,7 @@ CMD {0}""".format(NON_ASCII)
         lines.insert(-1, 'LABEL label105 1 \'05\'\n')
         lines.insert(-1, 'LABEL label106 1 \'0\'   6\n')
         df.lines = lines
-        labels = df.get_labels()
+        labels = df.labels
         assert len(labels) == 17
         assert labels.get('label1') == 'value 1'
         assert labels.get('label2') == 'myself'
