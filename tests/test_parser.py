@@ -16,16 +16,21 @@ from dockerfile_parse import DockerfileParser
 
 NON_ASCII = "žluťoučký"
 
+
 class TestDockerfileParser(object):
 
-    def test_dockerfileparser(self, tmpdir):
+    @pytest.mark.parametrize('cache_content', [
+        False,
+        True
+    ])
+    def test_dockerfileparser(self, tmpdir, cache_content):
         df_content = """\
 FROM fedora
 CMD {0}""".format(NON_ASCII)
         df_lines = ["FROM fedora\n", "CMD {0}".format(NON_ASCII)]
 
         tmpdir_path = str(tmpdir.realpath())
-        df = DockerfileParser(tmpdir_path)
+        df = DockerfileParser(tmpdir_path, cache_content)
 
         df.content = ""
         df.content = df_content
@@ -37,8 +42,12 @@ CMD {0}""".format(NON_ASCII)
         assert df.content == df_content
         assert df.lines == df_lines
 
-    def test_dockerfile_structure(self, tmpdir):
-        df = DockerfileParser(str(tmpdir))
+    @pytest.mark.parametrize('cache_content', [
+        False,
+        True
+    ])
+    def test_dockerfile_structure(self, tmpdir, cache_content):
+        df = DockerfileParser(str(tmpdir), cache_content)
         df.lines = ["# comment\n",        # should be ignored
                     " From  \\\n",        # mixed-case
                     "   base\n",          # extra ws, continuation line
@@ -63,8 +72,12 @@ CMD {0}""".format(NON_ASCII)
                                  'content': 'USER  {0}'.format(NON_ASCII),
                                  'value': '{0}'.format(NON_ASCII)}]
 
-    def test_dockerfile_json(self, tmpdir):
-        df = DockerfileParser(str(tmpdir))
+    @pytest.mark.parametrize('cache_content', [
+        False,
+        True
+    ])
+    def test_dockerfile_json(self, tmpdir, cache_content):
+        df = DockerfileParser(str(tmpdir), cache_content)
         df.content = """\
 # comment
 From  base
@@ -75,19 +88,27 @@ USER  {0}""".format(NON_ASCII)
                                {"USER": "{0}".format(NON_ASCII)}])
         assert df.json == expected
 
-    def test_get_baseimg_from_df(self, tmpdir):
+    @pytest.mark.parametrize('cache_content', [
+        False,
+        True
+    ])
+    def test_get_baseimg_from_df(self, tmpdir, cache_content):
         tmpdir_path = str(tmpdir.realpath())
-        df = DockerfileParser(tmpdir_path)
+        df = DockerfileParser(tmpdir_path, cache_content)
         df.lines = ["From fedora:latest\n",
                     "LABEL a b\n"]
         base_img = df.baseimage
         assert base_img.startswith('fedora')
 
-    def test_get_labels_from_df(self, tmpdir):
+    @pytest.mark.parametrize('cache_content', [
+        False,
+        True
+    ])
+    def test_get_labels_from_df(self, tmpdir, cache_content):
         tmpdir_path = str(tmpdir.realpath())
-        df = DockerfileParser(tmpdir_path)
+        df = DockerfileParser(tmpdir_path, cache_content)
         df.content = ""
-        lines = df.lines
+        lines = []
         lines.insert(-1, 'LABEL "label1"="value 1" "label2"=myself label3="" label4\n')
         lines.insert(-1, 'LABEL label5=5\n')
         lines.insert(-1, 'LABEL "label6"=6\n')
