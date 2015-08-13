@@ -42,6 +42,14 @@ CMD {0}""".format(NON_ASCII)
         assert df.content == df_content
         assert df.lines == df_lines
 
+    def test_constructor_cache(self, tmpdir):
+        tmpdir_path = str(tmpdir.realpath())
+        df1 = DockerfileParser(tmpdir_path)
+        df1.lines = ["From fedora:latest\n", "LABEL a b\n"]
+
+        df2 = DockerfileParser(tmpdir_path, True)
+        assert df2.cached_content
+
     @pytest.mark.parametrize('cache_content', [
         False,
         True

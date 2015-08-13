@@ -35,6 +35,14 @@ class DockerfileParser(object):
         self.cache_content = cache_content
         self.cached_content = ''  # unicode string
 
+        if cache_content:
+            try:
+                # this will cache the Dockerfile content
+                self.content
+            except (IOError, OSError):
+                # the Dockerfile doesn't exist yet
+                pass
+
     @staticmethod
     def b2u(string):
         """ bytes to unicode """
@@ -96,7 +104,7 @@ class DockerfileParser(object):
                 content = self.b2u(dockerfile.read())
                 if self.cache_content:
                     self.cached_content = content
-                return  content
+                return content
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve content of dockerfile: %s" % repr(ex))
             raise
