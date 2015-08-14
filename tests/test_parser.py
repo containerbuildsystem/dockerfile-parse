@@ -153,22 +153,24 @@ USER  {0}""".format(NON_ASCII)
         assert labels.get('label105') == '1 05'
         assert labels.get('label106') == '1 0   6'
 
-    @pytest.mark.parametrize(('instruction', 'old', 'new'), [
-        ('FROM', 'ubuntu', 'fedora:latest'),
-        ('CMD', 'old cmd', 'new command'),
-    ])
-    def test_modify_instruction(self, tmpdir, instruction, old, new):
+    def test_modify_instruction(self, tmpdir):
+        FROM = ('ubuntu', 'fedora:latest')
+        CMD = ('old cmd', 'new command')
         df_content = """\
-# comment
-{0} {1}""".format(instruction, old)
+FROM {0}
+CMD {1}""".format(FROM[0], CMD[0])
 
         tmpdir_path = str(tmpdir.realpath())
         dfp = DockerfileParser(tmpdir_path)
         dfp.content = df_content
 
-        dfp.get_instruction_value(instruction) == old
-        dfp.modify_instruction(instruction, new)
-        dfp.get_instruction_value(instruction) == new
+        assert dfp.baseimage == FROM[0]
+        dfp.baseimage = FROM[1]
+        assert dfp.baseimage == FROM[1]
+
+        assert dfp.cmd == CMD[0]
+        dfp.cmd = CMD[1]
+        assert dfp.cmd == CMD[1]
 
     @pytest.mark.parametrize(('key', 'old', 'new'), [
         # Simple case, no '=' or quotes
@@ -188,7 +190,7 @@ USER  {0}""".format(NON_ASCII)
         # Release that's not entirely numeric
         ('Version', 'Version=1.1', '2.1'),
     ])
-    def test_modify_instruction_label(self, tmpdir, key, old, new):
+    def test_labels_setter(self, tmpdir, key, old, new):
         df_content = """\
 FROM xyz
 LABEL a b
@@ -200,5 +202,5 @@ LABEL x=y
         dfp = DockerfileParser(tmpdir_path)
         dfp.content = df_content
 
-        dfp.modify_instruction_label(key, new)
+        dfp.labels = {key: new}
         assert dfp.labels[key] == new

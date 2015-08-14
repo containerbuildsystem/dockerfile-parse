@@ -197,16 +197,6 @@ class DockerfileParser(object):
         insndescs = [{insndesc['instruction']: insndesc['value']} for insndesc in self.structure]
         return json.dumps(insndescs)
 
-    def get_instruction_value(self, instruction):
-        if instruction == 'CMD':
-            return self.cmd
-        elif instruction == 'FROM':
-            return self.baseimage
-        elif instruction == 'LABEL':
-            return self.labels
-        else:
-            raise NotImplementedError()
-
     @property
     def baseimage(self):
         """
@@ -215,6 +205,14 @@ class DockerfileParser(object):
         for insndesc in self.structure:
             if insndesc['instruction'] == 'FROM':
                 return insndesc['value']
+
+    @baseimage.setter
+    def baseimage(self, value):
+        """
+        setter for 'FROM' instruction
+
+        """
+        self._modify_instruction('FROM', value)
 
     @property
     def cmd(self):
@@ -228,18 +226,13 @@ class DockerfileParser(object):
                 value = insndesc['value']
         return value
 
-    def _shlex_split(self, string):
+    @cmd.setter
+    def cmd(self, value):
         """
-        Python2's shlex doesn't like unicode, so we have to convert the string
-        into bytes, run shlex.split() and convert it back to unicode.
+        setter for 'CMD' instruction
+
         """
-        if PY2 and isinstance(string, unicode):
-            string = self.u2b(string)
-            # this takes care of quotes
-            splits = shlex.split(string)
-            return map(self.b2u, splits)
-        else:
-            return shlex.split(string)
+        self._modify_instruction('CMD', value)
 
     @property
     def labels(self):
@@ -265,9 +258,32 @@ class DockerfileParser(object):
                         logger.debug("new label %s=%s", repr(key_val[0]), repr(labels[key_val[0]]))
         return labels
 
-    def modify_instruction_label(self, label_key, label_value):
+    @labels.setter
+    def labels(self, labels_dict):
         """
-        Rewrite a local Dockerfile with an incremented Release label
+        setter for 'LABEL' instruction
+        :param labels_dict: dictionary of label name & value
+        """
+        assert isinstance(labels_dict, dict)
+        for k, v in labels_dict.items():
+            self._modify_instruction_label(k, v)
+
+    def _shlex_split(self, string):
+        """
+        Python2's shlex doesn't like unicode, so we have to convert the string
+        into bytes, run shlex.split() and convert it back to unicode.
+        """
+        if PY2 and isinstance(string, unicode):
+            string = self.u2b(string)
+            # this takes care of quotes
+            splits = shlex.split(string)
+            return map(self.b2u, splits)
+        else:
+            return shlex.split(string)
+
+    def _modify_instruction_label(self, label_key, label_value):
+        """
+        set LABEL label_key to label_value
         """
         assert label_key in self.labels
 
@@ -315,7 +331,7 @@ class DockerfileParser(object):
         lines.insert(startline, content)
         self.lines = lines
 
-    def modify_instruction(self, instruction, new_value, old_value=None):
+    def _modify_instruction(self, instruction, new_value, old_value=None):
         """
 
         :param instruction: like 'FROM' or 'CMD'
@@ -324,7 +340,7 @@ class DockerfileParser(object):
         :return:
         """
         if instruction == 'LABEL':
-            raise ValueError('Please use modify_instruction_label() for LABEL instruction')
+            raise ValueError('Please use labels.setter')
         for insn in self.structure:
             if insn['instruction'] == instruction:
                 if old_value and insn['value'] != old_value:
