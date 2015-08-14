@@ -18,17 +18,30 @@ from .constants import DOCKERFILE_FILENAME, PY2
 
 logger = logging.getLogger(__name__)
 
+
 class DockerfileParser(object):
-    def __init__(self, path=None):
+    def __init__(self, path=None, cache_content=False):
         """
         Initialize path to Dockerfile
         :param path: path to (directory with) Dockerfile
+        :param cache_content: cache Dockerfile content inside DockerfileParser
         """
         path = path or '.'
         if path.endswith(DOCKERFILE_FILENAME):
             self.dockerfile_path = path
         else:
             self.dockerfile_path = os.path.join(path, DOCKERFILE_FILENAME)
+
+        self.cache_content = cache_content
+        self.cached_content = ''  # unicode string
+
+        if cache_content:
+            try:
+                # this will cache the Dockerfile content
+                self.content
+            except (IOError, OSError):
+                # the Dockerfile doesn't exist yet
+                pass
 
     @staticmethod
     def b2u(string):
@@ -49,9 +62,15 @@ class DockerfileParser(object):
         """
         :return: list containing lines (unicode) from Dockerfile
         """
+        if self.cache_content and self.cached_content:
+            return self.cached_content.splitlines(True)
+
         try:
             with open(self.dockerfile_path, 'r') as dockerfile:
-                return [self.b2u(l) for l in dockerfile.readlines()]
+                lines = [self.b2u(l) for l in dockerfile.readlines()]
+                if self.cache_content:
+                    self.cached_content = ''.join(lines)
+                return lines
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve lines from dockerfile: %s" % repr(ex))
             raise
@@ -62,6 +81,9 @@ class DockerfileParser(object):
         Fill Dockerfile content with specified lines
         :param lines: list of lines to be written to Dockerfile
         """
+        if self.cache_content:
+            self.cached_content = ''.join([self.b2u(l) for l in lines])
+
         try:
             with open(self.dockerfile_path, 'w') as dockerfile:
                 dockerfile.writelines([self.u2b(l) for l in lines])
@@ -74,9 +96,15 @@ class DockerfileParser(object):
         """
         :return: string (unicode) with Dockerfile content
         """
+        if self.cache_content and self.cached_content:
+            return self.cached_content
+
         try:
             with open(self.dockerfile_path, 'r') as dockerfile:
-                return self.b2u(dockerfile.read())
+                content = self.b2u(dockerfile.read())
+                if self.cache_content:
+                    self.cached_content = content
+                return content
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve content of dockerfile: %s" % repr(ex))
             raise
@@ -87,6 +115,9 @@ class DockerfileParser(object):
         Overwrite Dockerfile with specified content
         :param content: string to be written to Dockerfile
         """
+        if self.cache_content:
+            self.cached_content = self.b2u(content)
+
         try:
             with open(self.dockerfile_path, 'w') as dockerfile:
                 dockerfile.write(self.u2b(content))
