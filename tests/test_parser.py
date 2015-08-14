@@ -152,3 +152,53 @@ USER  {0}""".format(NON_ASCII)
         assert labels.get('label104') == '1 04'
         assert labels.get('label105') == '1 05'
         assert labels.get('label106') == '1 0   6'
+
+    @pytest.mark.parametrize(('instruction', 'old', 'new'), [
+        ('FROM', 'ubuntu', 'fedora:latest'),
+        ('CMD', 'old cmd', 'new command'),
+    ])
+    def test_modify_instruction(self, tmpdir, instruction, old, new):
+        df_content = """\
+# comment
+{0} {1}""".format(instruction, old)
+
+        tmpdir_path = str(tmpdir.realpath())
+        dfp = DockerfileParser(tmpdir_path)
+        dfp.content = df_content
+
+        dfp.get_instruction_value(instruction) == old
+        dfp.modify_instruction(instruction, new)
+        dfp.get_instruction_value(instruction) == new
+
+    @pytest.mark.parametrize(('key', 'old', 'new'), [
+        # Simple case, no '=' or quotes
+        ('Release', 'Release 1', '2'),
+        # No '=' but quotes
+        ('Release', '"Release" "2"', '3'),
+        # Deal with another label
+        ('Release', 'Release 3\nLABEL Name foo', '4'),
+        # Simple case, '=' but no quotes
+        ('Release', 'Release=1', '2'),
+        # '=' and quotes
+        ('Name', '"Name"="alpha"', 'beta delta'),
+        # '=', multiple labels, no quotes
+        ('Release', 'Name=foo Release=3', '4'),
+        # '=', multiple labels and quotes
+        ('Release', 'Name=foo "Release"="4"', '5'),
+        # Release that's not entirely numeric
+        ('Version', 'Version=1.1', '2.1'),
+    ])
+    def test_modify_instruction_label(self, tmpdir, key, old, new):
+        df_content = """\
+FROM xyz
+LABEL a b
+LABEL {0}
+LABEL x=y
+""".format(old)
+
+        tmpdir_path = str(tmpdir.realpath())
+        dfp = DockerfileParser(tmpdir_path)
+        dfp.content = df_content
+
+        dfp.modify_instruction_label(key, new)
+        assert dfp.labels[key] == new
