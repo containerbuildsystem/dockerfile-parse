@@ -190,17 +190,58 @@ CMD {1}""".format(FROM[0], CMD[0])
         # Release that's not entirely numeric
         ('Version', 'Version=1.1', '2.1'),
     ])
-    def test_labels_setter(self, tmpdir, key, old, new):
+    def test_change_labels(self, tmpdir, key, old, new):
         df_content = """\
 FROM xyz
 LABEL a b
 LABEL {0}
-LABEL x=y
+LABEL x=\"y z\"
 """.format(old)
 
         tmpdir_path = str(tmpdir.realpath())
         dfp = DockerfileParser(tmpdir_path)
         dfp.content = df_content
 
-        dfp.labels = {key: new}
+        dfp.change_labels({key: new})
         assert dfp.labels[key] == new
+
+    def test_add_del_instruction(self, tmpdir):
+        df_content = """\
+CMD xyz
+LABEL a b
+LABEL x=\"y z\"
+"""
+        tmpdir_path = str(tmpdir.realpath())
+        dfp = DockerfileParser(tmpdir_path)
+        dfp.content = df_content
+
+        dfp._add_instruction('FROM', 'fedora')
+        assert dfp.baseimage == 'fedora'
+        dfp._delete_instructions('FROM')
+        assert dfp.baseimage is None
+
+        dfp._add_instruction('LABEL', ('Name', 'self'))
+        assert len(dfp.labels) == 3
+        assert dfp.labels.get('Name') == 'self'
+        dfp._delete_instructions('LABEL')
+        assert dfp.labels == {}
+
+        assert dfp.cmd == 'xyz'
+
+    @pytest.mark.parametrize('labels', [
+        {'Name': 'New shiny project'},
+        {'something': 'nothing', 'mine': 'yours'},
+    ])
+    def test_labels_setter(self, tmpdir, labels):
+        df_content = """\
+FROM xyz
+LABEL a b
+LABEL x=\"y z\"
+"""
+
+        tmpdir_path = str(tmpdir.realpath())
+        dfp = DockerfileParser(tmpdir_path)
+        dfp.content = df_content
+
+        dfp.labels = labels
+        assert dfp.labels == labels

@@ -205,6 +205,7 @@ class DockerfileParser(object):
         for insndesc in self.structure:
             if insndesc['instruction'] == 'FROM':
                 return insndesc['value']
+        return None
 
     @baseimage.setter
     def baseimage(self, value):
@@ -221,6 +222,7 @@ class DockerfileParser(object):
         If there's more than one CMD then only the last CMD takes effect.
         :return: value of last CMD instruction
         """
+        value = None
         for insndesc in self.structure:
             if insndesc['instruction'] == 'CMD':
                 value = insndesc['value']
@@ -259,14 +261,29 @@ class DockerfileParser(object):
         return labels
 
     @labels.setter
-    def labels(self, labels_dict):
+    def labels(self, labels):
         """
-        setter for 'LABEL' instruction
-        :param labels_dict: dictionary of label name & value
+        Setter for LABEL instruction. Deletes old LABELs and sets new per input param.
+        :param labels: dictionary of label name & value to be set
         """
-        assert isinstance(labels_dict, dict)
-        for k, v in labels_dict.items():
-            self._modify_instruction_label(k, v)
+        if not isinstance(labels, dict):
+            raise TypeError('labels needs to be a dictionary {label name: label value}')
+
+        self._delete_instructions('LABEL')
+        for key, value in labels.items():
+            self._add_instruction('LABEL', (key, value))
+
+    def change_labels(self, labels):
+        """
+        Only changes labels that are specified in the input dict.
+        You can't add or delete labels, just change value of existing ones.
+        :param labels: Dictionary of label name & value you want to change.
+        """
+        if not isinstance(labels, dict):
+            raise TypeError('labels needs to be a dictionary {label name: label value}')
+
+        for key, value in labels.items():
+            self._modify_instruction_label(key, value)
 
     def _shlex_split(self, string):
         """
@@ -285,7 +302,8 @@ class DockerfileParser(object):
         """
         set LABEL label_key to label_value
         """
-        assert label_key in self.labels
+        if label_key not in self.labels:
+            raise KeyError('%s not in LABELs' % label_key)
 
         # Find where in the file to put the next release
         content = startline = endline = None
@@ -333,11 +351,9 @@ class DockerfileParser(object):
 
     def _modify_instruction(self, instruction, new_value, old_value=None):
         """
-
         :param instruction: like 'FROM' or 'CMD'
         :param new_value: new value of instruction
         :param old_value: if not None then modify only if old value equals old_value
-        :return:
         """
         if instruction == 'LABEL':
             raise ValueError('Please use labels.setter')
@@ -350,3 +366,33 @@ class DockerfileParser(object):
                 del lines[insn['startline']:insn['endline'] + 1]
                 lines.insert(insn['startline'], new_line)
                 self.lines = lines
+
+    def _delete_instructions(self, instruction, value=None):
+        """
+        :param instruction: name of instruction to be deleted
+        :param value: if specified, delete instruction only when it has this value
+        """
+        lines = self.lines
+        deleted = False
+        for insn in reversed(self.structure):
+            if insn['instruction'] == instruction:
+                if value and insn['value'] != value:
+                    continue
+                deleted = True
+                del lines[insn['startline']:insn['endline'] + 1]
+        if deleted:
+            self.lines = lines
+
+    def _add_instruction(self, instruction, value):
+        """
+        :param instruction: instruction name to be added
+        :param value: instruction value
+        """
+        if instruction == 'LABEL' and len(value) == 2:
+            new_line = '{0} "{1}"="{2}"\n'.format(instruction, value[0], value[1])
+        else:
+            new_line = '{0} {1}\n'.format(instruction, value)
+        if new_line:
+            lines = self.lines
+            lines += new_line
+            self.lines = lines
