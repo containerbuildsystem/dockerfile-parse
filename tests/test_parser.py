@@ -228,20 +228,47 @@ LABEL x=\"y z\"
 
         assert dfp.cmd == 'xyz'
 
-    @pytest.mark.parametrize('labels', [
-        {'Name': 'New shiny project'},
-        {'something': 'nothing', 'mine': 'yours'},
-    ])
-    def test_labels_setter(self, tmpdir, labels):
-        df_content = """\
-FROM xyz
-LABEL a b
-LABEL x=\"y z\"
-"""
+    @pytest.mark.parametrize(('existing',
+                              'labels',
+                              'expected',  # may be None
+    ), [
+        # Simple test: add a label
+        (['LABEL a b\n',
+          'LABEL x="y z"\n'],
+         {'Name': 'New shiny project'},
+         None),
 
+        # Add two labels
+        (['LABEL a b\n',
+          'LABEL x="y z"\n'],
+         {'something': 'nothing', 'mine': 'yours'},
+         None),
+
+        # Set labels to what they already were: should be no difference
+        (['LABEL a b\n',
+          'LABEL x="y z"\n',
+          'LABEL "first"="first" "second"="second"\n'],
+         {'a': 'b', 'x': 'y z', 'first': 'first', 'second': 'second'},
+         ['LABEL a b\n',
+          'LABEL x="y z"\n',
+          'LABEL "first"="first" "second"="second"\n"']),
+
+        # Adjust one label of a multi-value LABEL statement
+        (['LABEL first=first second=second\n'],
+         {'first': 'changed', 'second': 'second'},
+         ['LABEL "first"="changed" second=second\n"']),
+
+        # Delete one label of a multi-value LABEL statement
+        (['LABEL first=first second=second\n'],
+         {'second': 'second'},
+         ['LABEL second=second\n']),
+    ])
+    def test_labels_setter(self, tmpdir, existing, labels, expected):
         tmpdir_path = str(tmpdir.realpath())
         dfp = DockerfileParser(tmpdir_path)
-        dfp.content = df_content
+        dfp.lines = ["FROM xyz\n"] + existing
 
         dfp.labels = labels
         assert dfp.labels == labels
+        if expected is not None:
+            assert dfp.lines[1:] == expected
