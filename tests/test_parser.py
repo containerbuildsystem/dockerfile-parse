@@ -235,13 +235,13 @@ LABEL x=\"y z\"
         # Simple test: add a label
         (['LABEL a b\n',
           'LABEL x="y z"\n'],
-         {'Name': 'New shiny project'},
+         {'a': 'b', 'x': 'y z', 'Name': 'New shiny project'},
          None),
 
         # Add two labels
         (['LABEL a b\n',
           'LABEL x="y z"\n'],
-         {'something': 'nothing', 'mine': 'yours'},
+         {'a': 'b', 'x': 'y z', 'something': 'nothing', 'mine': 'yours'},
          None),
 
         # Set labels to what they already were: should be no difference
@@ -251,17 +251,28 @@ LABEL x=\"y z\"
          {'a': 'b', 'x': 'y z', 'first': 'first', 'second': 'second'},
          ['LABEL a b\n',
           'LABEL x="y z"\n',
-          'LABEL "first"="first" "second"="second"\n"']),
+          'LABEL "first"="first" "second"="second"\n']),
 
         # Adjust one label of a multi-value LABEL statement
         (['LABEL first=first second=second\n'],
          {'first': 'changed', 'second': 'second'},
-         ['LABEL "first"="changed" second=second\n"']),
+         ['LABEL first=changed second=second\n']),
 
         # Delete one label of a multi-value LABEL statement
         (['LABEL first=first second=second\n'],
          {'second': 'second'},
          ['LABEL second=second\n']),
+
+        # Nested quotes
+        (['LABEL "ownership"="Alice\'s label" other=value\n'],
+         {'ownership': "Alice's label"},
+         # quote() will always use single quotes when it can
+         ["LABEL ownership='Alice\'\"\'\"\'s label'\n"]),
+
+        # Modify a single value that needs quoting
+        (['LABEL foo bar\n'],
+         {'foo': 'extra bar'},
+         ["LABEL foo 'extra bar'\n"]),
     ])
     def test_labels_setter(self, tmpdir, existing, labels, expected):
         tmpdir_path = str(tmpdir.realpath())

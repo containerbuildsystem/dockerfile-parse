@@ -269,9 +269,23 @@ class DockerfileParser(object):
         if not isinstance(labels, dict):
             raise TypeError('labels needs to be a dictionary {label name: label value}')
 
-        self._delete_instructions('LABEL')
-        for key, value in labels.items():
-            self._add_instruction('LABEL', (key, value))
+        existing = self.labels
+
+        to_delete = [k for k in existing if k not in labels]
+        for key in to_delete:
+            logger.debug("delete %r", key)
+            self._modify_instruction_label(key, None)
+
+        to_add = dict((k, v) for (k, v) in labels.items() if k not in existing)
+        for k, v in to_add.items():
+            logger.debug("add %r", k)
+            self._add_instruction('LABEL', (k, v))
+
+        to_change = dict((k, v) for (k, v) in labels.items()
+                         if (k in existing and v != existing[k]))
+        for k, v in to_change.items():
+            logger.debug("modify %r", k)
+            self._modify_instruction_label(k, v)
 
     def change_labels(self, labels):
         """
@@ -301,6 +315,9 @@ class DockerfileParser(object):
     def _modify_instruction_label(self, label_key, label_value):
         """
         set LABEL label_key to label_value
+
+        :param label_key: str, label key
+        :param label_value: str or None, new label value or None to remove
         """
         if label_key not in self.labels:
             raise KeyError('%s not in LABELs' % label_key)
@@ -317,25 +334,35 @@ class DockerfileParser(object):
                 value = candidate['value'].replace("'", "").replace('"', '')
                 words = value.split(None, 1)
                 if words[0] == label_key:
-                    # Adjust label value
-                    words[1] = label_value
+                    if label_value is None:
+                        content = ''
+                    else:
+                        # Adjust label value
+                        words[1] = quote(label_value)
 
-                    # Now reconstruct the line
-                    content = " ".join(['LABEL'] + words) + '\n'
+                        # Now reconstruct the line
+                        content = " ".join(['LABEL'] + words) + '\n'
+
                     startline = candidate['startline']
                     endline = candidate['endline']
                     break
             else:  # LABEL "name"="value"
                 for token in splits:
                     words = token.split("=", 1)
+                    n = splits.index(token)
                     if words[0] == label_key:
-                        # Adjust label value
-                        words[1] = label_value
-                        n = splits.index(token)
-                        splits[n] = "=".join(map(quote, words))
+                        if label_value is None:
+                            del splits[n]
+                        else:
+                            # Adjust label value
+                            words[1] = label_value
+                            splits[n] = "=".join(words)
 
+                        labels = [x.split('=', 1) for x in splits]
+                        quoted_labels = ['='.join(map(quote, x))
+                                         for x in labels]
                         # Now reconstruct the line
-                        content = " ".join(['LABEL'] + splits) + '\n'
+                        content = " ".join(['LABEL'] + quoted_labels) + '\n'
                         startline = candidate['startline']
                         endline = candidate['endline']
                         break
