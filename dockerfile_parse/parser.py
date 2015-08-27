@@ -25,6 +25,26 @@ from .constants import DOCKERFILE_FILENAME, PY2
 logger = logging.getLogger(__name__)
 
 
+class Labels(dict):
+    """
+    A class for allowing direct write access to Dockerfile labels, e.g.:
+
+    parser.labels['label'] = 'value'
+    """
+
+    def __init__(self, labels, parser):
+        super(Labels, self).__init__(labels)
+        self.parser = parser
+
+    def __delitem__(self, key):
+        super(Labels, self).__delitem__(key)
+        self.parser.labels = dict(self)
+
+    def __setitem__(self, key, value):
+        super(Labels, self).__setitem__(key, value)
+        self.parser.labels = dict(self)
+
+
 class DockerfileParser(object):
     def __init__(self, path=None, cache_content=False):
         """
@@ -245,6 +265,7 @@ class DockerfileParser(object):
         labels = {}
         for insndesc in self.structure:
             if insndesc['instruction'] == 'LABEL':
+                logger.debug("label value: %r", insndesc['value'])
                 shlex_splits = self._shlex_split(insndesc['value'])
                 if '=' not in shlex_splits[0]:  # LABEL name value
                     # remove (double-)quotes
@@ -258,7 +279,8 @@ class DockerfileParser(object):
                         key_val = token.split("=", 1)
                         labels[key_val[0]] = key_val[1] if len(key_val) > 1 else ''
                         logger.debug("new label %s=%s", repr(key_val[0]), repr(labels[key_val[0]]))
-        return labels
+        logger.debug("labels: %r", labels)
+        return Labels(labels, self)
 
     @labels.setter
     def labels(self, labels):
@@ -335,7 +357,8 @@ class DockerfileParser(object):
                 words = value.split(None, 1)
                 if words[0] == label_key:
                     if label_value is None:
-                        content = ''
+                        # Delete this line altogether
+                        content = None
                     else:
                         # Adjust label value
                         words[1] = quote(label_value)
@@ -352,28 +375,35 @@ class DockerfileParser(object):
                     n = splits.index(token)
                     if words[0] == label_key:
                         if label_value is None:
+                            # Delete this label
                             del splits[n]
                         else:
                             # Adjust label value
                             words[1] = label_value
                             splits[n] = "=".join(words)
 
-                        labels = [x.split('=', 1) for x in splits]
-                        quoted_labels = ['='.join(map(quote, x))
-                                         for x in labels]
-                        # Now reconstruct the line
-                        content = " ".join(['LABEL'] + quoted_labels) + '\n'
+                        if len(splits) == 0:
+                            # We removed the last label, delete the whole line
+                            content = None
+                        else:
+                            labels = [x.split('=', 1) for x in splits]
+                            quoted_labels = ['='.join(map(quote, x))
+                                             for x in labels]
+                            # Now reconstruct the line
+                            content = " ".join(['LABEL'] + quoted_labels) + '\n'
+
                         startline = candidate['startline']
                         endline = candidate['endline']
                         break
 
         # We know the label we're looking for is there
-        assert content and startline and endline
+        assert startline and endline
 
         # Re-write the Dockerfile
         lines = self.lines
         del lines[startline:endline + 1]
-        lines.insert(startline, content)
+        if content:
+            lines.insert(startline, content)
         self.lines = lines
 
     def _modify_instruction(self, instruction, new_value, old_value=None):

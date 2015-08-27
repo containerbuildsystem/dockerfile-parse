@@ -283,3 +283,22 @@ LABEL x=\"y z\"
         assert dfp.labels == labels
         if expected is not None:
             assert dfp.lines[1:] == expected
+
+    @pytest.mark.parametrize('label', [
+        "LABEL mylabel=foo\n",
+        "LABEL mylabel foo\n",
+    ])
+    def test_labels_setter_direct(self, tmpdir, label):
+        tmpdir_path = str(tmpdir.realpath())
+        dfp = DockerfileParser(tmpdir_path)
+        dfp.lines = ["FROM xyz\n",
+                     label]
+
+        dfp.labels['mylabel'] = 'bar'
+        assert dfp.labels['mylabel'] == 'bar'
+
+        dfp.labels['newlabel'] = 'new'
+        assert dfp.labels == {'mylabel': 'bar', 'newlabel': 'new'}
+
+        del dfp.labels['newlabel']
+        assert dfp.labels == {'mylabel': 'bar'}
