@@ -11,12 +11,12 @@
 %global owner DBuildService
 %global project dockerfile-parse
 
-%global commit 2fee7d3622dc484034c6f115f08fd5e9ec78c011
+%global commit dce5676ee539937c5c815a0a43b3f4c5bf1b4264
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-dockerfile-parse
-Version:        0.0.3
-Release:        2%{?dist}
+Version:        0.0.4
+Release:        1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
 Group:          Development/Tools
@@ -99,6 +99,9 @@ popd
 %endif # with_python3
 
 %changelog
+* Thu Aug 27 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.4-1
+- 0.0.4
+
 * Tue Jun 30 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.3-2
 - define macros for RHEL-6
 
