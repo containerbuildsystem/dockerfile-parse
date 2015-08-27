@@ -293,6 +293,8 @@ class DockerfileParser(object):
 
         existing = self.labels
 
+        logger.debug("setting labels: %r", labels)
+
         to_delete = [k for k in existing if k not in labels]
         for key in to_delete:
             logger.debug("delete %r", key)
@@ -370,17 +372,16 @@ class DockerfileParser(object):
                     endline = candidate['endline']
                     break
             else:  # LABEL "name"="value"
-                for token in splits:
+                for index, token in enumerate(splits):
                     words = token.split("=", 1)
-                    n = splits.index(token)
                     if words[0] == label_key:
                         if label_value is None:
                             # Delete this label
-                            del splits[n]
+                            del splits[index]
                         else:
                             # Adjust label value
                             words[1] = label_value
-                            splits[n] = "=".join(words)
+                            splits[index] = "=".join(words)
 
                         if len(splits) == 0:
                             # We removed the last label, delete the whole line
@@ -406,18 +407,15 @@ class DockerfileParser(object):
             lines.insert(startline, content)
         self.lines = lines
 
-    def _modify_instruction(self, instruction, new_value, old_value=None):
+    def _modify_instruction(self, instruction, new_value):
         """
         :param instruction: like 'FROM' or 'CMD'
         :param new_value: new value of instruction
-        :param old_value: if not None then modify only if old value equals old_value
         """
         if instruction == 'LABEL':
             raise ValueError('Please use labels.setter')
         for insn in self.structure:
             if insn['instruction'] == instruction:
-                if old_value and insn['value'] != old_value:
-                    continue
                 new_line = '{0} {1}\n'.format(instruction, new_value)
                 lines = self.lines
                 del lines[insn['startline']:insn['endline'] + 1]
@@ -428,7 +426,12 @@ class DockerfileParser(object):
         """
         :param instruction: name of instruction to be deleted
         :param value: if specified, delete instruction only when it has this value
+                      if instruction is LABEL then value is label name
         """
+        if instruction == 'LABEL' and value:
+            self._modify_instruction_label(value, None)
+            return
+
         lines = self.lines
         deleted = False
         for insn in reversed(self.structure):
@@ -446,7 +449,7 @@ class DockerfileParser(object):
         :param value: instruction value
         """
         if instruction == 'LABEL' and len(value) == 2:
-            new_line = '{0} "{1}"="{2}"\n'.format(instruction, value[0], value[1])
+            new_line = 'LABEL ' + '='.join(map(quote, value)) + '\n'
         else:
             new_line = '{0} {1}\n'.format(instruction, value)
         if new_line:
