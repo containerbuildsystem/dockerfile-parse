@@ -13,14 +13,14 @@ import json
 import logging
 import os
 import re
-import shlex
 try:
     # py3
     from shlex import quote
 except ImportError:
     from pipes import quote
 
-from .constants import DOCKERFILE_FILENAME, PY2
+from .constants import DOCKERFILE_FILENAME
+from .util import b2u, u2b, shlex_split
 
 logger = logging.getLogger(__name__)
 
@@ -69,19 +69,6 @@ class DockerfileParser(object):
                 # the Dockerfile doesn't exist yet
                 pass
 
-    @staticmethod
-    def b2u(string):
-        """ bytes to unicode """
-        if isinstance(string, bytes):
-            return string.decode('utf-8')
-        return string
-
-    @staticmethod
-    def u2b(string):
-        """ unicode to bytes (Python 2 only) """
-        if PY2 and isinstance(string, unicode):
-            return string.encode('utf-8')
-        return string
 
     @property
     def lines(self):
@@ -93,7 +80,7 @@ class DockerfileParser(object):
 
         try:
             with open(self.dockerfile_path, 'r') as dockerfile:
-                lines = [self.b2u(l) for l in dockerfile.readlines()]
+                lines = [b2u(l) for l in dockerfile.readlines()]
                 if self.cache_content:
                     self.cached_content = ''.join(lines)
                 return lines
@@ -108,11 +95,11 @@ class DockerfileParser(object):
         :param lines: list of lines to be written to Dockerfile
         """
         if self.cache_content:
-            self.cached_content = ''.join([self.b2u(l) for l in lines])
+            self.cached_content = ''.join([b2u(l) for l in lines])
 
         try:
             with open(self.dockerfile_path, 'w') as dockerfile:
-                dockerfile.writelines([self.u2b(l) for l in lines])
+                dockerfile.writelines([u2b(l) for l in lines])
         except (IOError, OSError) as ex:
             logger.error("Couldn't write lines to dockerfile: %s" % repr(ex))
             raise
@@ -127,7 +114,7 @@ class DockerfileParser(object):
 
         try:
             with open(self.dockerfile_path, 'r') as dockerfile:
-                content = self.b2u(dockerfile.read())
+                content = b2u(dockerfile.read())
                 if self.cache_content:
                     self.cached_content = content
                 return content
@@ -142,11 +129,11 @@ class DockerfileParser(object):
         :param content: string to be written to Dockerfile
         """
         if self.cache_content:
-            self.cached_content = self.b2u(content)
+            self.cached_content = b2u(content)
 
         try:
             with open(self.dockerfile_path, 'w') as dockerfile:
-                dockerfile.write(self.u2b(content))
+                dockerfile.write(u2b(content))
         except (IOError, OSError) as ex:
             logger.error("Couldn't write content to dockerfile: %s" % repr(ex))
             raise
@@ -266,7 +253,7 @@ class DockerfileParser(object):
         for insndesc in self.structure:
             if insndesc['instruction'] == 'LABEL':
                 logger.debug("label value: %r", insndesc['value'])
-                shlex_splits = self._shlex_split(insndesc['value'])
+                shlex_splits = shlex_split(insndesc['value'])
                 if '=' not in shlex_splits[0]:  # LABEL name value
                     # remove (double-)quotes
                     value = insndesc['value'].replace("'", "").replace('"', '')
@@ -323,19 +310,6 @@ class DockerfileParser(object):
         for key, value in labels.items():
             self._modify_instruction_label(key, value)
 
-    def _shlex_split(self, string):
-        """
-        Python2's shlex doesn't like unicode, so we have to convert the string
-        into bytes, run shlex.split() and convert it back to unicode.
-        """
-        if PY2 and isinstance(string, unicode):
-            string = self.u2b(string)
-            # this takes care of quotes
-            splits = shlex.split(string)
-            return map(self.b2u, splits)
-        else:
-            return shlex.split(string)
-
     def _modify_instruction_label(self, label_key, label_value):
         """
         set LABEL label_key to label_value
@@ -350,7 +324,7 @@ class DockerfileParser(object):
         content = startline = endline = None
         for candidate in [insn for insn in self.structure
                           if insn['instruction'] == 'LABEL']:
-            splits = self._shlex_split(candidate['value'])
+            splits = shlex_split(candidate['value'])
 
             # LABEL syntax is one of two types:
             if '=' not in splits[0]:  # LABEL name value
