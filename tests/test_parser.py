@@ -94,10 +94,11 @@ USER  {0}""".format(NON_ASCII)
         lines.insert(-1, 'LABEL "label6"=6\n')
         lines.insert(-1, 'LABEL label7\n')
         lines.insert(-1, 'LABEL "label8"\n')
-        lines.insert(-1, 'LABEL "label9"="asd \  \nqwe"\n')
+        lines.insert(-1, 'LABEL "label9"="asd \\  \\n qwe"\n')
         lines.insert(-1, 'LABEL "label10"="{0}"\n'.format(NON_ASCII))
         lines.insert(-1, 'LABEL "label1 1"=1\n')
         lines.insert(-1, 'LABEL "label12"=12 \ \n   "label13"=13\n')
+        lines.insert(-1, 'LABEL label14=1\ 4\n')
         # old syntax (without =)
         lines.insert(-1, 'LABEL label101 101\n')
         lines.insert(-1, 'LABEL label102 1 02\n')
@@ -105,9 +106,10 @@ USER  {0}""".format(NON_ASCII)
         lines.insert(-1, 'LABEL label104 "1"  04\n')
         lines.insert(-1, 'LABEL label105 1 \'05\'\n')
         lines.insert(-1, 'LABEL label106 1 \'0\'   6\n')
+        lines.insert(-1, 'LABEL label107 1 0\ 7\n')
         dfparser.lines = lines
         labels = dfparser.labels
-        assert len(labels) == 19
+        assert len(labels) == 21
         assert labels.get('label1') == 'value 1'
         assert labels.get('label2') == 'myself'
         assert labels.get('label3') == ''
@@ -116,17 +118,19 @@ USER  {0}""".format(NON_ASCII)
         assert labels.get('label6') == '6'
         assert labels.get('label7') == ''
         assert labels.get('label8') == ''
-        assert labels.get('label9') == 'asd qwe'
+        assert labels.get('label9') == 'asd \\  \\n qwe'
         assert labels.get('label10') == '{0}'.format(NON_ASCII)
         assert labels.get('label1 1') == '1'
         assert labels.get('label12') == '12'
         assert labels.get('label13') == '13'
+        assert labels.get('label14') == '1 4'
         assert labels.get('label101') == '101'
         assert labels.get('label102') == '1 02'
         assert labels.get('label103') == '1 03'
         assert labels.get('label104') == '1  04'
         assert labels.get('label105') == '1 05'
         assert labels.get('label106') == '1 0   6'
+        assert labels.get('label107') == '1 0 7'
 
     def test_modify_instruction(self, dfparser):
         FROM = ('ubuntu', 'fedora:latest')

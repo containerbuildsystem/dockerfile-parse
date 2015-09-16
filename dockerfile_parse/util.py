@@ -40,3 +40,31 @@ def shlex_split(string):
         return map(b2u, splits)
     else:
         return shlex.split(string)
+
+
+def strip_quotes(string):
+    """ strip first and last (double) quotes"""
+    if string.startswith('"') and string.endswith('"'):
+        return string[1:-1]
+    if string.startswith("'") and string.endswith("'"):
+        return string[1:-1]
+    return string
+
+
+def remove_quotes(string):
+    """ remove all (double) quotes"""
+    return string.replace("'", "").replace('"', '')
+
+
+def remove_nonescaped_quotes(string):
+    """
+    "' "   -> ' '
+    '" '   -> ' '
+    '\ '  -> ' '
+    "\\' " -> "' "
+    '\\" ' -> '" '
+    """
+    string = string.replace("\\'", "\\s").replace('\\"', '\\d')  # backup
+    string = remove_quotes(string)
+    string = string.replace('\ ', ' ')
+    return string.replace("\\s", "'").replace('\\d', '"')  # restore

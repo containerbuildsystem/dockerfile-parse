@@ -20,7 +20,7 @@ except ImportError:
     from pipes import quote
 
 from .constants import DOCKERFILE_FILENAME
-from .util import b2u, u2b, shlex_split
+from .util import b2u, u2b, shlex_split, strip_quotes, remove_quotes, remove_nonescaped_quotes
 
 logger = logging.getLogger(__name__)
 
@@ -255,11 +255,11 @@ class DockerfileParser(object):
                 logger.debug("label value: %r", insndesc['value'])
                 shlex_splits = shlex_split(insndesc['value'])
                 if '=' not in shlex_splits[0]:  # LABEL name value
-                    # remove (double-)quotes
-                    value = insndesc['value'].replace("'", "").replace('"', '')
-                    # split it to first and the rest
-                    key_val = value.split(None, 1)
-                    labels[key_val[0]] = key_val[1] if len(key_val) > 1 else ''
+                    # split it to first (name) and the rest (value)
+                    key_val = insndesc['value'].split(None, 1)
+                    key_val[0] = strip_quotes(key_val[0])
+                    labels[key_val[0]] = remove_nonescaped_quotes(key_val[1])\
+                                                                    if len(key_val) > 1 else ''
                     logger.debug("new label %s=%s", repr(key_val[0]), repr(labels[key_val[0]]))
                 else:  # LABEL "name"="value"
                     for token in shlex_splits:
@@ -328,8 +328,7 @@ class DockerfileParser(object):
 
             # LABEL syntax is one of two types:
             if '=' not in splits[0]:  # LABEL name value
-                # remove (double-)quotes
-                value = candidate['value'].replace("'", "").replace('"', '')
+                value = remove_quotes(candidate['value'])
                 words = value.split(None, 1)
                 if words[0] == label_key:
                     if label_value is None:
