@@ -24,3 +24,11 @@ def dfparser(tmpdir, request):
     """
     tmpdir_path = str(tmpdir.realpath())
     return DockerfileParser(tmpdir_path, request.param)
+
+
+@pytest.fixture(params=['LABEL', 'ENV'])
+def instruction(request):
+    """
+    Parametrized fixture which enables to run a test once for each instruction in params
+    """
+    return request.param

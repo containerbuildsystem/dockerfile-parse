@@ -45,6 +45,26 @@ class Labels(dict):
         self.parser.labels = dict(self)
 
 
+class Envs(dict):
+    """
+    A class for allowing direct write access to Dockerfile env. vars., e.g.:
+
+    parser.envs['variable_name'] = 'value'
+    """
+
+    def __init__(self, envs, parser):
+        super(Envs, self).__init__(envs)
+        self.parser = parser
+
+    def __delitem__(self, key):
+        super(Envs, self).__delitem__(key)
+        self.parser.envs = dict(self)
+
+    def __setitem__(self, key, value):
+        super(Envs, self).__setitem__(key, value)
+        self.parser.envs = dict(self)
+
+
 class DockerfileParser(object):
     def __init__(self, path=None, cache_content=False):
         """
@@ -68,7 +88,6 @@ class DockerfileParser(object):
             except (IOError, OSError):
                 # the Dockerfile doesn't exist yet
                 pass
-
 
     @property
     def lines(self):
@@ -176,7 +195,6 @@ class DockerfileParser(object):
                 m = insnre.match(line)
                 if not m:
                     continue
-
                 current_instruction = {'instruction': m.groups()[0].upper(),
                                        'startline': lineno,
                                        'endline': lineno,
@@ -249,128 +267,163 @@ class DockerfileParser(object):
         LABELs from Dockerfile
         :return: dictionary of label:value (value might be '')
         """
-        labels = {}
+        return self._instruction_getter('LABEL')
+
+    @property
+    def envs(self):
+        """
+        ENVs from Dockerfile
+        :return: dictionary of env_var_name:value (value might be '')
+        """
+        return self._instruction_getter('ENV')
+
+    def _instruction_getter(self, name):
+        """
+        
+        :param name: e.g. 'LABEL' or 'ENV'
+        :return:
+        """
+        if name != 'LABEL' and name != 'ENV':
+            raise ValueError("Unsupported instruction '%s'", name)
+        instructions = {}
         for insndesc in self.structure:
-            if insndesc['instruction'] == 'LABEL':
-                logger.debug("label value: %r", insndesc['value'])
+            if insndesc['instruction'] == name:
+                logger.debug("%s value: %r", name.lower(), insndesc['value'])
                 shlex_splits = shlex_split(insndesc['value'])
-                if '=' not in shlex_splits[0]:  # LABEL name value
+                if '=' not in shlex_splits[0]:  # LABEL/ENV name value
                     # split it to first (name) and the rest (value)
                     key_val = insndesc['value'].split(None, 1)
                     key_val[0] = strip_quotes(key_val[0])
-                    labels[key_val[0]] = remove_nonescaped_quotes(key_val[1])\
-                                                                    if len(key_val) > 1 else ''
-                    logger.debug("new label %s=%s", repr(key_val[0]), repr(labels[key_val[0]]))
-                else:  # LABEL "name"="value"
+                    instructions[key_val[0]] = remove_nonescaped_quotes(key_val[1])\
+                                                                        if len(key_val) > 1 else ''
+                    logger.debug("new %s %r=%r", name.lower(), key_val[0], instructions[key_val[0]])
+                else:  # LABEL/ENV "name"="value"
                     for token in shlex_splits:
                         key_val = token.split("=", 1)
-                        labels[key_val[0]] = key_val[1] if len(key_val) > 1 else ''
-                        logger.debug("new label %s=%s", repr(key_val[0]), repr(labels[key_val[0]]))
-        logger.debug("labels: %r", labels)
-        return Labels(labels, self)
+                        instructions[key_val[0]] = key_val[1] if len(key_val) > 1 else ''
+                        logger.debug("new %s %r=%r",
+                                     name.lower(), key_val[0], instructions[key_val[0]])
+        logger.debug("instructions: %r", instructions)
+        return Labels(instructions, self) if name == 'LABEL' else Envs(instructions, self)
 
     @labels.setter
     def labels(self, labels):
         """
-        Setter for LABEL instruction. Deletes old LABELs and sets new per input param.
+        Setter for LABEL instruction, i.e. sets LABELs per input param.
         :param labels: dictionary of label name & value to be set
         """
-        if not isinstance(labels, dict):
-            raise TypeError('labels needs to be a dictionary {label name: label value}')
+        self._instructions_setter('LABEL', labels)
 
-        existing = self.labels
+    @envs.setter
+    def envs(self, envs):
+        """
+        Setter for ENV instruction, i.e. sets ENVs per input param.
+        :param envs: dictionary of env. var. name & value to be set
+        """
+        self._instructions_setter('ENV', envs)
 
-        logger.debug("setting labels: %r", labels)
+    def _instructions_setter(self, name, instructions):
+        if not isinstance(instructions, dict):
+            raise TypeError('instructions needs to be a dictionary {name: value}')
 
-        to_delete = [k for k in existing if k not in labels]
+        if name == 'LABEL':
+            existing = self.labels
+        elif name == 'ENV':
+            existing = self.envs
+
+        logger.debug("setting %s instructions: %r" % (name, instructions))
+
+        to_delete = [k for k in existing if k not in instructions]
         for key in to_delete:
             logger.debug("delete %r", key)
-            self._modify_instruction_label(key, None)
+            self._modify_instruction_label_env(name, key, None)
 
-        to_add = dict((k, v) for (k, v) in labels.items() if k not in existing)
+        to_add = dict((k, v) for (k, v) in instructions.items() if k not in existing)
         for k, v in to_add.items():
             logger.debug("add %r", k)
-            self._add_instruction('LABEL', (k, v))
+            self._add_instruction(name, (k, v))
 
-        to_change = dict((k, v) for (k, v) in labels.items()
+        to_change = dict((k, v) for (k, v) in instructions.items()
                          if (k in existing and v != existing[k]))
         for k, v in to_change.items():
             logger.debug("modify %r", k)
-            self._modify_instruction_label(k, v)
+            self._modify_instruction_label_env(name, k, v)
 
-    def change_labels(self, labels):
-        """
-        Only changes labels that are specified in the input dict.
-        You can't add or delete labels, just change value of existing ones.
-        :param labels: Dictionary of label name & value you want to change.
-        """
-        if not isinstance(labels, dict):
-            raise TypeError('labels needs to be a dictionary {label name: label value}')
+    def _modify_instruction_label(self, label_key, instr_value):
+        self._modify_instruction_label_env('LABEL', label_key, instr_value)
 
-        for key, value in labels.items():
-            self._modify_instruction_label(key, value)
+    def _modify_instruction_env(self, env_var_key, env_var_value):
+        self._modify_instruction_label_env('ENV', env_var_key, env_var_value)
 
-    def _modify_instruction_label(self, label_key, label_value):
+    def _modify_instruction_label_env(self, instruction, instr_key, instr_value):
         """
-        set LABEL label_key to label_value
+        set <INSTRUCTION> instr_key to instr_value
 
-        :param label_key: str, label key
-        :param label_value: str or None, new label value or None to remove
+        :param instr_key: str, label key
+        :param instr_value: str or None, new label/env value or None to remove
         """
-        if label_key not in self.labels:
-            raise KeyError('%s not in LABELs' % label_key)
+        if instruction == 'LABEL':
+            instructions = self.labels
+        elif instruction == 'ENV':
+            instructions = self.envs
+        else:
+            raise ValueError("Unknown instruction '%s'" % instruction)
+
+        if instr_key not in instructions:
+            raise KeyError('%s not in %ss' % (instr_key, instruction))
 
         # Find where in the file to put the next release
         content = startline = endline = None
         for candidate in [insn for insn in self.structure
-                          if insn['instruction'] == 'LABEL']:
+                          if insn['instruction'] == instruction]:
             splits = shlex_split(candidate['value'])
 
-            # LABEL syntax is one of two types:
-            if '=' not in splits[0]:  # LABEL name value
+            # LABEL/ENV syntax is one of two types:
+            if '=' not in splits[0]:  # LABEL/ENV name value
+                # remove (double-)quotes
                 value = remove_quotes(candidate['value'])
                 words = value.split(None, 1)
-                if words[0] == label_key:
-                    if label_value is None:
+                if words[0] == instr_key:
+                    if instr_value is None:
                         # Delete this line altogether
                         content = None
                     else:
-                        # Adjust label value
-                        words[1] = quote(label_value)
+                        # Adjust label/env value
+                        words[1] = quote(instr_value)
 
                         # Now reconstruct the line
-                        content = " ".join(['LABEL'] + words) + '\n'
+                        content = " ".join([instruction] + words) + '\n'
 
                     startline = candidate['startline']
                     endline = candidate['endline']
                     break
-            else:  # LABEL "name"="value"
+            else:  # LABEL/ENV "name"="value"
                 for index, token in enumerate(splits):
                     words = token.split("=", 1)
-                    if words[0] == label_key:
-                        if label_value is None:
+                    if words[0] == instr_key:
+                        if instr_value is None:
                             # Delete this label
                             del splits[index]
                         else:
-                            # Adjust label value
-                            words[1] = label_value
+                            # Adjust label/env value
+                            words[1] = instr_value
                             splits[index] = "=".join(words)
 
                         if len(splits) == 0:
-                            # We removed the last label, delete the whole line
+                            # We removed the last label/env, delete the whole line
                             content = None
                         else:
-                            labels = [x.split('=', 1) for x in splits]
-                            quoted_labels = ['='.join(map(quote, x))
-                                             for x in labels]
+                            instrs = [x.split('=', 1) for x in splits]
+                            quoted_instrs = ['='.join(map(quote, x))
+                                             for x in instrs]
                             # Now reconstruct the line
-                            content = " ".join(['LABEL'] + quoted_labels) + '\n'
+                            content = " ".join([instruction] + quoted_instrs) + '\n'
 
                         startline = candidate['startline']
                         endline = candidate['endline']
                         break
 
-        # We know the label we're looking for is there
+        # We know the label/env we're looking for is there
         assert startline and endline
 
         # Re-write the Dockerfile
@@ -387,6 +440,8 @@ class DockerfileParser(object):
         """
         if instruction == 'LABEL':
             raise ValueError('Please use labels.setter')
+        if instruction == 'ENV':
+            raise ValueError('Please use envs.setter')
         for insn in self.structure:
             if insn['instruction'] == instruction:
                 new_line = '{0} {1}\n'.format(instruction, new_value)
@@ -403,6 +458,9 @@ class DockerfileParser(object):
         """
         if instruction == 'LABEL' and value:
             self._modify_instruction_label(value, None)
+            return
+        if instruction == 'ENV' and value:
+            self._modify_instruction_env(value, None)
             return
 
         lines = self.lines
@@ -421,8 +479,8 @@ class DockerfileParser(object):
         :param instruction: instruction name to be added
         :param value: instruction value
         """
-        if instruction == 'LABEL' and len(value) == 2:
-            new_line = 'LABEL ' + '='.join(map(quote, value)) + '\n'
+        if (instruction == 'LABEL' or instruction == 'ENV') and len(value) == 2:
+            new_line = instruction + ' ' + '='.join(map(quote, value)) + '\n'
         else:
             new_line = '{0} {1}\n'.format(instruction, value)
         if new_line:
