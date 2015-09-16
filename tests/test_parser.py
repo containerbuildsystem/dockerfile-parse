@@ -13,34 +13,28 @@ import json
 import pytest
 
 from dockerfile_parse import DockerfileParser
+from tests.fixtures import dfparser, instruction
 
 NON_ASCII = "žluťoučký"
 
 
 class TestDockerfileParser(object):
 
-    @pytest.mark.parametrize('cache_content', [
-        False,
-        True
-    ])
-    def test_dockerfileparser(self, tmpdir, cache_content):
+    def test_dockerfileparser(self, dfparser):
         df_content = """\
 FROM fedora
 CMD {0}""".format(NON_ASCII)
         df_lines = ["FROM fedora\n", "CMD {0}".format(NON_ASCII)]
 
-        tmpdir_path = str(tmpdir.realpath())
-        df = DockerfileParser(tmpdir_path, cache_content)
+        dfparser.content = ""
+        dfparser.content = df_content
+        assert dfparser.content == df_content
+        assert dfparser.lines == df_lines
 
-        df.content = ""
-        df.content = df_content
-        assert df.content == df_content
-        assert df.lines == df_lines
-
-        df.content = ""
-        df.lines = df_lines
-        assert df.content == df_content
-        assert df.lines == df_lines
+        dfparser.content = ""
+        dfparser.lines = df_lines
+        assert dfparser.content == df_content
+        assert dfparser.lines == df_lines
 
     def test_constructor_cache(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
@@ -50,43 +44,33 @@ CMD {0}""".format(NON_ASCII)
         df2 = DockerfileParser(tmpdir_path, True)
         assert df2.cached_content
 
-    @pytest.mark.parametrize('cache_content', [
-        False,
-        True
-    ])
-    def test_dockerfile_structure(self, tmpdir, cache_content):
-        df = DockerfileParser(str(tmpdir), cache_content)
-        df.lines = ["# comment\n",        # should be ignored
-                    " From  \\\n",        # mixed-case
-                    "   base\n",          # extra ws, continuation line
-                    " # comment\n",
-                    " label  foo  \\\n",  # extra ws
-                    "    bar  \n",        # extra ws, continuation line
-                    "USER  {0}".format(NON_ASCII)]   # extra ws, no newline
+    def test_dockerfile_structure(self, dfparser):
+        dfparser.lines = ["# comment\n",        # should be ignored
+                          " From  \\\n",        # mixed-case
+                          "   base\n",          # extra ws, continuation line
+                          " # comment\n",
+                          " label  foo  \\\n",  # extra ws
+                          "    bar  \n",        # extra ws, continuation line
+                          "USER  {0}".format(NON_ASCII)]   # extra ws, no newline
 
-        assert df.structure == [{'instruction': 'FROM',
-                                 'startline': 1,  # 0-based
-                                 'endline': 2,
-                                 'content': ' From  \\\n   base\n',
-                                 'value': 'base'},
-                                {'instruction': 'LABEL',
-                                 'startline': 4,
-                                 'endline': 5,
-                                 'content': ' label  foo  \\\n    bar  \n',
-                                 'value': 'foo      bar'},
-                                {'instruction': 'USER',
-                                 'startline': 6,
-                                 'endline': 6,
-                                 'content': 'USER  {0}'.format(NON_ASCII),
-                                 'value': '{0}'.format(NON_ASCII)}]
+        assert dfparser.structure == [{'instruction': 'FROM',
+                                       'startline': 1,  # 0-based
+                                       'endline': 2,
+                                       'content': ' From  \\\n   base\n',
+                                       'value': 'base'},
+                                      {'instruction': 'LABEL',
+                                       'startline': 4,
+                                       'endline': 5,
+                                       'content': ' label  foo  \\\n    bar  \n',
+                                       'value': 'foo      bar'},
+                                      {'instruction': 'USER',
+                                       'startline': 6,
+                                       'endline': 6,
+                                       'content': 'USER  {0}'.format(NON_ASCII),
+                                       'value': '{0}'.format(NON_ASCII)}]
 
-    @pytest.mark.parametrize('cache_content', [
-        False,
-        True
-    ])
-    def test_dockerfile_json(self, tmpdir, cache_content):
-        df = DockerfileParser(str(tmpdir), cache_content)
-        df.content = """\
+    def test_dockerfile_json(self, dfparser):
+        dfparser.content = """\
 # comment
 From  base
 LABEL foo="bar baz"
@@ -94,94 +78,237 @@ USER  {0}""".format(NON_ASCII)
         expected = json.dumps([{"FROM": "base"},
                                {"LABEL": "foo=\"bar baz\""},
                                {"USER": "{0}".format(NON_ASCII)}])
-        assert df.json == expected
+        assert dfparser.json == expected
 
-    @pytest.mark.parametrize('cache_content', [
-        False,
-        True
-    ])
-    def test_get_baseimg_from_df(self, tmpdir, cache_content):
-        tmpdir_path = str(tmpdir.realpath())
-        df = DockerfileParser(tmpdir_path, cache_content)
-        df.lines = ["From fedora:latest\n",
-                    "LABEL a b\n"]
-        base_img = df.baseimage
+    def test_get_baseimg_from_df(self, dfparser):
+        dfparser.lines = ["From fedora:latest\n",
+                          "LABEL a b\n"]
+        base_img = dfparser.baseimage
         assert base_img.startswith('fedora')
 
-    @pytest.mark.parametrize('cache_content', [
-        False,
-        True
-    ])
-    def test_get_labels_from_df(self, tmpdir, cache_content):
-        tmpdir_path = str(tmpdir.realpath())
-        df = DockerfileParser(tmpdir_path, cache_content)
-        df.content = ""
+    def test_get_instructions_from_df(self, dfparser, instruction):
+        dfparser.content = ""
         lines = []
-        lines.insert(-1, 'LABEL "label1"=\'value 1\' "label2"=myself label3="" label4\n')
-        lines.insert(-1, 'LABEL label5=5\n')
-        lines.insert(-1, 'LABEL "label6"=6\n')
-        lines.insert(-1, 'LABEL label7\n')
-        lines.insert(-1, 'LABEL "label8"\n')
-        lines.insert(-1, 'LABEL "label9"="asd \  \nqwe"\n')
-        lines.insert(-1, 'LABEL "label10"="{0}"\n'.format(NON_ASCII))
-        lines.insert(-1, 'LABEL "label1 1"=1\n')
-        lines.insert(-1, 'LABEL "label12"=12 \ \n   "label13"=13\n')
+        i = instruction
+        lines.insert(-1, '{0} "name1"=\'value 1\' "name2"=myself name3="" name4\n'.format(i))
+        lines.insert(-1, '{0} name5=5\n'.format(i))
+        lines.insert(-1, '{0} "name6"=6\n'.format(i))
+        lines.insert(-1, '{0} name7\n'.format(i))
+        lines.insert(-1, '{0} "name8"\n'.format(i))
+        lines.insert(-1, '{0} "name9"="asd \\  \\n qwe"\n'.format(i))
+        lines.insert(-1, '{0} "name10"="{1}"\n'.format(i, NON_ASCII))
+        lines.insert(-1, '{0} "name1 1"=1\n'.format(i))
+        lines.insert(-1, '{0} "name12"=12 \ \n   "name13"=13\n'.format(i))
+        lines.insert(-1, '{0} name14=1\ 4\n'.format(i))
         # old syntax (without =)
-        lines.insert(-1, 'LABEL label101 101\n')
-        lines.insert(-1, 'LABEL label102 1 02\n')
-        lines.insert(-1, 'LABEL "label103" 1 03\n')
-        lines.insert(-1, 'LABEL label104 "1"  04\n')
-        lines.insert(-1, 'LABEL label105 1 \'05\'\n')
-        lines.insert(-1, 'LABEL label106 1 \'0\'   6\n')
-        df.lines = lines
-        labels = df.labels
-        assert len(labels) == 19
-        assert labels.get('label1') == 'value 1'
-        assert labels.get('label2') == 'myself'
-        assert labels.get('label3') == ''
-        assert labels.get('label4') == ''
-        assert labels.get('label5') == '5'
-        assert labels.get('label6') == '6'
-        assert labels.get('label7') == ''
-        assert labels.get('label8') == ''
-        assert labels.get('label9') == 'asd qwe'
-        assert labels.get('label10') == '{0}'.format(NON_ASCII)
-        assert labels.get('label1 1') == '1'
-        assert labels.get('label12') == '12'
-        assert labels.get('label13') == '13'
-        assert labels.get('label101') == '101'
-        assert labels.get('label102') == '1 02'
-        assert labels.get('label103') == '1 03'
-        assert labels.get('label104') == '1  04'
-        assert labels.get('label105') == '1 05'
-        assert labels.get('label106') == '1 0   6'
+        lines.insert(-1, '{0} name101 101\n'.format(i))
+        lines.insert(-1, '{0} name102 1 02\n'.format(i))
+        lines.insert(-1, '{0} "name103" 1 03\n'.format(i))
+        lines.insert(-1, '{0} name104 "1"  04\n'.format(i))
+        lines.insert(-1, '{0} name105 1 \'05\'\n'.format(i))
+        lines.insert(-1, '{0} name106 1 \'0\'   6\n'.format(i))
+        lines.insert(-1, '{0} name107 1 0\ 7\n'.format(i))
+        dfparser.lines = lines
+        if instruction == 'LABEL':
+            instructions = dfparser.labels
+        elif instruction == 'ENV':
+            instructions = dfparser.envs
+        assert len(instructions) == 21
+        assert instructions.get('name1') == 'value 1'
+        assert instructions.get('name2') == 'myself'
+        assert instructions.get('name3') == ''
+        assert instructions.get('name4') == ''
+        assert instructions.get('name5') == '5'
+        assert instructions.get('name6') == '6'
+        assert instructions.get('name7') == ''
+        assert instructions.get('name8') == ''
+        assert instructions.get('name9') == 'asd \\  \\n qwe'
+        assert instructions.get('name10') == '{0}'.format(NON_ASCII)
+        assert instructions.get('name1 1') == '1'
+        assert instructions.get('name12') == '12'
+        assert instructions.get('name13') == '13'
+        assert instructions.get('name14') == '1 4'
+        assert instructions.get('name101') == '101'
+        assert instructions.get('name102') == '1 02'
+        assert instructions.get('name103') == '1 03'
+        assert instructions.get('name104') == '1  04'
+        assert instructions.get('name105') == '1 05'
+        assert instructions.get('name106') == '1 0   6'
+        assert instructions.get('name107') == '1 0 7'
 
-    def test_modify_instruction(self, tmpdir):
+    def test_modify_instruction(self, dfparser):
         FROM = ('ubuntu', 'fedora:latest')
         CMD = ('old cmd', 'new command')
         df_content = """\
 FROM {0}
 CMD {1}""".format(FROM[0], CMD[0])
 
-        tmpdir_path = str(tmpdir.realpath())
-        dfp = DockerfileParser(tmpdir_path)
-        dfp.content = df_content
+        dfparser.content = df_content
 
-        assert dfp.baseimage == FROM[0]
-        dfp.baseimage = FROM[1]
-        assert dfp.baseimage == FROM[1]
+        assert dfparser.baseimage == FROM[0]
+        dfparser.baseimage = FROM[1]
+        assert dfparser.baseimage == FROM[1]
 
-        assert dfp.cmd == CMD[0]
-        dfp.cmd = CMD[1]
-        assert dfp.cmd == CMD[1]
+        assert dfparser.cmd == CMD[0]
+        dfparser.cmd = CMD[1]
+        assert dfparser.cmd == CMD[1]
 
-    @pytest.mark.parametrize(('old_labels', 'key', 'new_value', 'expected'), [
+    def test_add_del_instruction(self, dfparser):
+        df_content = """\
+CMD xyz
+LABEL a=b c=d
+LABEL x=\"y z\"
+ENV h i
+ENV j='k' l=m
+"""
+        dfparser.content = df_content
+
+        dfparser._add_instruction('FROM', 'fedora')
+        assert dfparser.baseimage == 'fedora'
+        dfparser._delete_instructions('FROM')
+        assert dfparser.baseimage is None
+
+        dfparser._add_instruction('FROM', 'fedora')
+        assert dfparser.baseimage == 'fedora'
+        dfparser._delete_instructions('FROM', 'fedora')
+        assert dfparser.baseimage is None
+
+        dfparser._add_instruction('LABEL', ('Name', 'self'))
+        assert len(dfparser.labels) == 4
+        assert dfparser.labels.get('Name') == 'self'
+        dfparser._delete_instructions('LABEL')
+        assert dfparser.labels == {}
+
+        dfparser._add_instruction('ENV', ('Name', 'self'))
+        assert len(dfparser.envs) == 4
+        assert dfparser.envs.get('Name') == 'self'
+        dfparser._delete_instructions('ENV')
+        assert dfparser.envs == {}
+
+        assert dfparser.cmd == 'xyz'
+
+    @pytest.mark.parametrize(('existing',
+                              'delete_key',
+                              'expected',
+    ), [
+        # Delete non-existing key
+        (['a b\n',
+          'x="y z"\n'],
+         'name',
+         KeyError()),
+
+        # Simple remove
+        (['a b\n',
+          'x="y z"\n'],
+         'a',
+         ['x="y z"\n']),
+
+        # Simple remove
+        (['a b\n',
+          'x="y z"\n'],
+         'x',
+         ['a b\n']),
+
+        #  Remove first of two instructions on the same line
+        (['a b\n',
+          'x="y z"\n',
+          '"first"="first" "second"="second"\n'],
+         'first',
+         ['a b\n',
+          'x="y z"\n',
+          'second=second\n']),
+
+        #  Remove second of two instructions on the same line
+        (['a b\n',
+          'x="y z"\n',
+          '"first"="first" "second"="second"\n'],
+         'second',
+         ['a b\n',
+          'x="y z"\n',
+          'first=first\n']),
+    ])
+    def test_delete_instruction(self, dfparser, instruction, existing, delete_key, expected):
+        existing = [instruction + ' ' + i for i in existing]
+        if isinstance(expected, list):
+            expected = [instruction + ' ' + i for i in expected]
+        dfparser.lines = ["FROM xyz\n"] + existing
+
+        if isinstance(expected, KeyError):
+            with pytest.raises(KeyError):
+                dfparser._delete_instructions(instruction, delete_key)
+        else:
+            dfparser._delete_instructions(instruction, delete_key)
+            assert set(dfparser.lines[1:]) == set(expected)
+
+    @pytest.mark.parametrize(('existing',
+                              'new',
+                              'expected',
+    ), [
+        # Simple test: set an instruction
+        (['a b\n',
+          'x="y z"\n'],
+         {'Name': 'New shiny project'},
+         ['Name=\'New shiny project\'\n']),
+
+        # Set two instructions
+        (['a b\n',
+          'x="y z"\n'],
+         {'something': 'nothing', 'mine': 'yours'},
+         ['something=nothing\n', 'mine=yours\n']),
+
+        # Set instructions to what they already were: should be no difference
+        (['a b\n',
+          'x="y z"\n',
+          '"first"="first" second=\'second value\'\n'],
+         {'a': 'b', 'x': 'y z', 'first': 'first', 'second': 'second value'},
+         ['a b\n',
+          'x="y z"\n',
+          '"first"="first" second=\'second value\'\n']),
+
+        # Adjust one label of a multi-value LABEL/ENV statement
+        (['a b\n',
+          'first=\'first value\' "second"=second\n',
+          'x="y z"\n'],
+         {'first': 'changed', 'second': 'second'},
+         ['first=changed second=second\n']),
+
+        # Delete one label of a multi-value LABEL/ENV statement
+        (['a b\n',
+          'x="y z"\n',
+          'first=first second=second\n'],
+         {'second': 'second'},
+         ['second=second\n']),
+
+        # Nested quotes
+        (['"ownership"="Alice\'s label" other=value\n'],
+         {'ownership': "Alice's label"},
+         # quote() will always use single quotes when it can
+         ["ownership='Alice\'\"\'\"\'s label'\n"]),
+
+        # Modify a single value that needs quoting
+        (['foo bar\n'],
+         {'foo': 'extra bar'},
+         ["foo 'extra bar'\n"]),
+    ])
+    def test_setter(self, dfparser, instruction, existing, new, expected):
+        existing = [instruction + ' ' + i for i in existing]
+        if isinstance(expected, list):
+            expected = [instruction + ' ' + i for i in expected]
+        dfparser.lines = ["FROM xyz\n"] + existing
+
+        if instruction == 'LABEL':
+            dfparser.labels = new
+            assert dfparser.labels == new
+        elif instruction == 'ENV':
+            dfparser.envs = new
+            assert dfparser.envs == new
+        assert set(dfparser.lines[1:]) == set(expected)
+
+    @pytest.mark.parametrize(('old_instructions', 'key', 'new_value', 'expected'), [
         # Simple case, no '=' or quotes
         ('Release 1', 'Release', '2', 'Release 2'),
         # No '=' but quotes
         ('"Release" "2"', 'Release', '3', 'Release 3'),
-        # Deal with another label
-        ('Release 3\nLABEL Name foo', 'Release', '4', 'Release 4'),
         # Simple case, '=' but no quotes
         ('Release=1', 'Release', '6', 'Release=6'),
         # '=' and quotes
@@ -193,176 +320,26 @@ CMD {1}""".format(FROM[0], CMD[0])
         # Release that's not entirely numeric
         ('Version=1.1', 'Version', '2.1', 'Version=2.1'),
     ])
-    def test_change_labels(self, tmpdir, key, old_labels, new_value, expected):
+    def test_setter_direct(self, dfparser, instruction, old_instructions, key, new_value, expected):
         df_content = """\
 FROM xyz
 LABEL a b
-LABEL {0}
 LABEL x=\"y z\"
-""".format(old_labels)
+ENV c d
+ENV e=\"f g\"
+{0} {1}
+""".format(instruction, old_instructions)
 
-        tmpdir_path = str(tmpdir.realpath())
-        dfp = DockerfileParser(tmpdir_path)
-        dfp.content = df_content
-
-        dfp.change_labels({key: new_value})
-        assert dfp.labels[key] == new_value
-        assert dfp.lines[2] == 'LABEL {0}\n'.format(expected)
-
-    def test_add_del_instruction(self, tmpdir):
-        df_content = """\
-CMD xyz
-LABEL a=b c=d
-LABEL x=\"y z\"
-"""
-        tmpdir_path = str(tmpdir.realpath())
-        dfp = DockerfileParser(tmpdir_path)
-        dfp.content = df_content
-
-        dfp._add_instruction('FROM', 'fedora')
-        assert dfp.baseimage == 'fedora'
-        dfp._delete_instructions('FROM')
-        assert dfp.baseimage is None
-
-        dfp._add_instruction('FROM', 'fedora')
-        assert dfp.baseimage == 'fedora'
-        dfp._delete_instructions('FROM', 'fedora')
-        assert dfp.baseimage is None
-
-        dfp._add_instruction('LABEL', ('Name', 'self'))
-        assert len(dfp.labels) == 4
-        assert dfp.labels.get('Name') == 'self'
-        dfp._delete_instructions('LABEL')
-        assert dfp.labels == {}
-
-        assert dfp.cmd == 'xyz'
-
-    @pytest.mark.parametrize(('existing',
-                              'delete_key',
-                              'expected',
-    ), [
-        # Delete non-existing label
-        (['LABEL a b\n',
-          'LABEL x="y z"\n'],
-         'name',
-         KeyError()),
-
-        # Simple remove
-        (['LABEL a b\n',
-          'LABEL x="y z"\n'],
-         'a',
-         ['LABEL x="y z"\n']),
-
-        # Simple remove
-        (['LABEL a b\n',
-          'LABEL x="y z"\n'],
-         'x',
-         ['LABEL a b\n']),
-
-        #  Remove first of two labels on the same line
-        (['LABEL a b\n',
-          'LABEL x="y z"\n',
-          'LABEL "first"="first" "second"="second"\n'],
-         'first',
-         ['LABEL a b\n',
-          'LABEL x="y z"\n',
-          'LABEL second=second\n']),
-
-        #  Remove second of two labels on the same line
-        (['LABEL a b\n',
-          'LABEL x="y z"\n',
-          'LABEL "first"="first" "second"="second"\n'],
-         'second',
-         ['LABEL a b\n',
-          'LABEL x="y z"\n',
-          'LABEL first=first\n']),
-    ])
-    def test_delete_label(self, tmpdir, existing, delete_key, expected):
-        tmpdir_path = str(tmpdir.realpath())
-        dfp = DockerfileParser(tmpdir_path)
-        dfp.lines = ["FROM xyz\n"] + existing
-
-        if isinstance(expected, KeyError):
-            with pytest.raises(KeyError):
-                dfp._delete_instructions('LABEL', delete_key)
-        else:
-            dfp._delete_instructions('LABEL', delete_key)
-            assert set(dfp.lines[1:]) == set(expected)
-
-    @pytest.mark.parametrize(('existing',
-                              'labels',
-                              'expected',
-    ), [
-        # Simple test: set a label
-        (['LABEL a b\n',
-          'LABEL x="y z"\n'],
-         {'Name': 'New shiny project'},
-         ['LABEL Name=\'New shiny project\'\n']),
-
-        # Set two labels
-        (['LABEL a b\n',
-          'LABEL x="y z"\n'],
-         {'something': 'nothing', 'mine': 'yours'},
-         ['LABEL something=nothing\n', 'LABEL mine=yours\n']),
-
-        # Set labels to what they already were: should be no difference
-        (['LABEL a b\n',
-          'LABEL x="y z"\n',
-          'LABEL "first"="first" second=\'second value\'\n'],
-         {'a': 'b', 'x': 'y z', 'first': 'first', 'second': 'second value'},
-         ['LABEL a b\n',
-          'LABEL x="y z"\n',
-          'LABEL "first"="first" second=\'second value\'\n']),
-
-        # Adjust one label of a multi-value LABEL statement
-        (['LABEL a b\n',
-          'LABEL first=\'first value\' "second"=second\n',
-          'LABEL x="y z"\n'],
-         {'first': 'changed', 'second': 'second'},
-         ['LABEL first=changed second=second\n']),
-
-        # Delete one label of a multi-value LABEL statement
-        (['LABEL a b\n',
-          'LABEL x="y z"\n',
-          'LABEL first=first second=second\n'],
-         {'second': 'second'},
-         ['LABEL second=second\n']),
-
-        # Nested quotes
-        (['LABEL "ownership"="Alice\'s label" other=value\n'],
-         {'ownership': "Alice's label"},
-         # quote() will always use single quotes when it can
-         ["LABEL ownership='Alice\'\"\'\"\'s label'\n"]),
-
-        # Modify a single value that needs quoting
-        (['LABEL foo bar\n'],
-         {'foo': 'extra bar'},
-         ["LABEL foo 'extra bar'\n"]),
-    ])
-    def test_labels_setter(self, tmpdir, existing, labels, expected):
-        tmpdir_path = str(tmpdir.realpath())
-        dfp = DockerfileParser(tmpdir_path)
-        dfp.lines = ["FROM xyz\n"] + existing
-
-        dfp.labels = labels
-        assert dfp.labels == labels
-        assert set(dfp.lines[1:]) == set(expected)
-
-    @pytest.mark.parametrize('label', [
-        "LABEL mylabel=foo\n",
-        "LABEL mylabel foo\n",
-    ])
-    def test_labels_setter_direct(self, tmpdir, label):
-        tmpdir_path = str(tmpdir.realpath())
-        dfp = DockerfileParser(tmpdir_path)
-        dfp.lines = ["FROM xyz\n",
-                     label]
-
-        dfp.labels['mylabel'] = 'bar'
-        assert dfp.labels['mylabel'] == 'bar'
-
-        dfp.labels['newlabel'] = 'new'
-        assert dfp.labels == {'mylabel': 'bar', 'newlabel': 'new'}
-
-        del dfp.labels['newlabel']
-        assert dfp.labels == {'mylabel': 'bar'}
+        dfparser.content = df_content
+        if instruction == 'LABEL':
+            dfparser.labels[key] = new_value
+            assert dfparser.labels[key] == new_value
+            assert dfparser.lines[-1] == '{0} {1}\n'.format(instruction, expected)
+            del dfparser.labels[key]
+            assert not dfparser.labels.get(key)
+        elif instruction == 'ENV':
+            dfparser.envs[key] = new_value
+            assert dfparser.envs[key] == new_value
+            assert dfparser.lines[-1] == '{0} {1}\n'.format(instruction, expected)
+            del dfparser.envs[key]
+            assert not dfparser.labels.get(key)
