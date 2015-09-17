@@ -210,6 +210,10 @@ class DockerfileParser(object):
 
             in_continuation = contre.match(line)
             if not in_continuation and current_instruction is not None:
+                i = re.compile(r'^\s*(\w+)\s+(.*)', flags=re.DOTALL)
+                m = i.match(current_instruction['content'])
+                if m:
+                    current_instruction['value_raw'] = m.groups()[1]
                 instructions.append(current_instruction)
 
         return instructions

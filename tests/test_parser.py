@@ -49,7 +49,7 @@ CMD {0}""".format(NON_ASCII)
                           " From  \\\n",        # mixed-case
                           "   base\n",          # extra ws, continuation line
                           " # comment\n",
-                          " label  foo  \\\n",  # extra ws
+                          " label  \"foo\"  \\\n",  # extra ws
                           "    bar  \n",        # extra ws, continuation line
                           "USER  {0}".format(NON_ASCII)]   # extra ws, no newline
 
@@ -57,17 +57,20 @@ CMD {0}""".format(NON_ASCII)
                                        'startline': 1,  # 0-based
                                        'endline': 2,
                                        'content': ' From  \\\n   base\n',
-                                       'value': 'base'},
+                                       'value': 'base',
+                                       'value_raw': '\\\n   base\n'},
                                       {'instruction': 'LABEL',
                                        'startline': 4,
                                        'endline': 5,
-                                       'content': ' label  foo  \\\n    bar  \n',
-                                       'value': 'foo      bar'},
+                                       'content': ' label  "foo"  \\\n    bar  \n',
+                                       'value': '"foo"      bar',
+                                       'value_raw': '"foo"  \\\n    bar  \n'},
                                       {'instruction': 'USER',
                                        'startline': 6,
                                        'endline': 6,
                                        'content': 'USER  {0}'.format(NON_ASCII),
-                                       'value': '{0}'.format(NON_ASCII)}]
+                                       'value': '{0}'.format(NON_ASCII),
+                                       'value_raw': '{0}'.format(NON_ASCII)}]
 
     def test_dockerfile_json(self, dfparser):
         dfparser.content = """\
