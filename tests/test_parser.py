@@ -370,6 +370,24 @@ ENV e=\"f g\"
                           "LABEL TEST={0}\n".format(label)]
         assert dfparser.labels['TEST'] == expected
 
+    @pytest.mark.parametrize(('label', 'expected'), [
+        # These would have been substituted with env_replace=True
+        ('$V', '$V'),
+        ('"$V"', '$V'),
+        ('$V-foo', '$V-foo'),
+        ('"$V-foo"', '$V-foo'),
+        ('"$V"-foo', '$V-foo'),
+    ])
+    def test_env_noreplace(self, dfparser, label, expected):
+        """
+        Make sure environment replacement can be disabled.
+        """
+        dfparser.env_replace = False
+        dfparser.lines = ["FROM fedora\n",
+                          "ENV V=v\n",
+                          "LABEL TEST={0}\n".format(label)]
+        assert dfparser.labels['TEST'] == expected
+
     @pytest.mark.parametrize('label', [
         '${V',
         '"${V"',

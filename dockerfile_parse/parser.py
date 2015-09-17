@@ -66,7 +66,7 @@ class Envs(dict):
 
 
 class DockerfileParser(object):
-    def __init__(self, path=None, cache_content=False):
+    def __init__(self, path=None, cache_content=False, env_replace=True):
         """
         Initialize path to Dockerfile
         :param path: path to (directory with) Dockerfile
@@ -88,6 +88,8 @@ class DockerfileParser(object):
             except (IOError, OSError):
                 # the Dockerfile doesn't exist yet
                 pass
+
+        self.env_replace = env_replace
 
     @property
     def lines(self):
@@ -267,7 +269,7 @@ class DockerfileParser(object):
         LABELs from Dockerfile
         :return: dictionary of label:value (value might be '')
         """
-        return self._instruction_getter('LABEL')
+        return self._instruction_getter('LABEL', env_replace=self.env_replace)
 
     @property
     def envs(self):
@@ -275,13 +277,15 @@ class DockerfileParser(object):
         ENVs from Dockerfile
         :return: dictionary of env_var_name:value (value might be '')
         """
-        return self._instruction_getter('ENV')
+        return self._instruction_getter('ENV', env_replace=self.env_replace)
 
-    def _instruction_getter(self, name):
+    def _instruction_getter(self, name, env_replace):
         """
-        
+        Get LABEL or ENV instructions with environment replacement
+
         :param name: e.g. 'LABEL' or 'ENV'
-        :return:
+        :param env_replace: bool, whether to perform ENV substitution
+        :return: Labels instance or Envs instance
         """
         if name != 'LABEL' and name != 'ENV':
             raise ValueError("Unsupported instruction '%s'", name)
@@ -291,18 +295,25 @@ class DockerfileParser(object):
             this_insn = insndesc['instruction']
             if this_insn in (name, 'ENV'):
                 logger.debug("%s value: %r", name.lower(), insndesc['value'])
-                shlex_splits = shlex_split(insndesc['value'], envs=envs)
+                shlex_splits = shlex_split(insndesc['value'],
+                                           env_replace=env_replace, envs=envs)
                 if '=' not in shlex_splits[0]:  # LABEL/ENV name value
                     # split it to first (name) and the rest (value)
                     key_val = insndesc['value'].split(None, 1)
                     key = strip_quotes(key_val[0])
-                    val = (EnvSubst(key_val[1], envs).substitute()
-                           if len(key_val) > 1 else '')
+                    try:
+                        val = key_val[1]
+                    except IndexError:
+                        val = ''
+
+                    if env_replace:
+                        val = EnvSubst(val, envs).substitute()
+
                     val = remove_nonescaped_quotes(val)
                     if this_insn == name:
                         instructions[key] = val
                         logger.debug("new %s %r=%r", name.lower(), key, val)
-                    if this_insn == 'ENV':
+                    if env_replace and this_insn == 'ENV':
                         envs[key] = val
                 else:  # LABEL/ENV "name"="value"
                     for token in shlex_splits:
