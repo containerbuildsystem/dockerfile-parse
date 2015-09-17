@@ -343,3 +343,62 @@ ENV e=\"f g\"
             assert dfparser.lines[-1] == '{0} {1}\n'.format(instruction, expected)
             del dfparser.envs[key]
             assert not dfparser.labels.get(key)
+
+    @pytest.mark.parametrize(('label', 'expected'), [
+        # Expected substitutions
+        ('$V', 'v'),
+        ('"$V"', 'v'),
+        ('$V-foo', 'v-foo'),
+        ('"$V-foo"', 'v-foo'),
+        ('"$V"-foo', 'v-foo'),
+        ('${V}', 'v'),
+        ('${V}-foo', 'v-foo'),
+        ('$V-{foo}', 'v-{foo}'),
+
+        # These should not be substituted, only dequoted
+        ("'$V'", "$V"),
+        ("\\$V", "$V"),
+
+        # Try to trip up the parser
+        ('\\"$V', '"v'),
+        ("\\'$V", "'v"),
+        ('$V}', 'v}'),
+    ])
+    def test_env_replace(self, dfparser, label, expected):
+        dfparser.lines = ["FROM fedora\n",
+                          "ENV V=v\n",
+                          "LABEL TEST={0}\n".format(label)]
+        assert dfparser.labels['TEST'] == expected
+
+    @pytest.mark.parametrize('label', [
+        '${V',
+        '"${V"',
+    ])
+    def test_env_invalid(self, dfparser, label):
+        """
+        These tests are invalid, but the parser should at least terminate
+        even if it raises an exception.
+        """
+        dfparser.lines = ["FROM fedora\n",
+                          "ENV v=v\n",
+                          "LABEL TEST={0}\n".format(label)]
+        try:
+            dfparser.labels['TEST']
+        except:
+            pass
+
+    @pytest.mark.xfail
+    @pytest.mark.parametrize(('label', 'expected'), [
+        ('${V:-foo}', 'foo'),
+        ('${V:+foo}', 'v'),
+        ('${UNDEF:+foo}', 'foo'),
+        ('${UNDEF:+${V}}', 'v'),
+    ])
+    def test_env_replace_notimplemented(self, dfparser, label, expected):
+        """
+        Test for syntax we don't support yet but should.
+        """
+        dfparser.lines = ["FROM fedora\n",
+                          "ENV V=v\n",
+                          "LABEL TEST={0}\n".format(label)]
+        assert dfparser.labels['TEST'] == expected

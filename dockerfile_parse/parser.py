@@ -20,7 +20,7 @@ except ImportError:
     from pipes import quote
 
 from .constants import DOCKERFILE_FILENAME
-from .util import b2u, u2b, shlex_split, strip_quotes, remove_quotes, remove_nonescaped_quotes
+from .util import b2u, u2b, shlex_split, strip_quotes, remove_quotes, remove_nonescaped_quotes, EnvSubst
 
 logger = logging.getLogger(__name__)
 
@@ -286,23 +286,35 @@ class DockerfileParser(object):
         if name != 'LABEL' and name != 'ENV':
             raise ValueError("Unsupported instruction '%s'", name)
         instructions = {}
+        envs = {}
         for insndesc in self.structure:
-            if insndesc['instruction'] == name:
+            this_insn = insndesc['instruction']
+            if this_insn in (name, 'ENV'):
                 logger.debug("%s value: %r", name.lower(), insndesc['value'])
-                shlex_splits = shlex_split(insndesc['value'])
+                shlex_splits = shlex_split(insndesc['value'], envs=envs)
                 if '=' not in shlex_splits[0]:  # LABEL/ENV name value
                     # split it to first (name) and the rest (value)
                     key_val = insndesc['value'].split(None, 1)
-                    key_val[0] = strip_quotes(key_val[0])
-                    instructions[key_val[0]] = remove_nonescaped_quotes(key_val[1])\
-                                                                        if len(key_val) > 1 else ''
-                    logger.debug("new %s %r=%r", name.lower(), key_val[0], instructions[key_val[0]])
+                    key = strip_quotes(key_val[0])
+                    val = (EnvSubst(key_val[1], envs).substitute()
+                           if len(key_val) > 1 else '')
+                    val = remove_nonescaped_quotes(val)
+                    if this_insn == name:
+                        instructions[key] = val
+                        logger.debug("new %s %r=%r", name.lower(), key, val)
+                    if this_insn == 'ENV':
+                        envs[key] = val
                 else:  # LABEL/ENV "name"="value"
                     for token in shlex_splits:
                         key_val = token.split("=", 1)
-                        instructions[key_val[0]] = key_val[1] if len(key_val) > 1 else ''
-                        logger.debug("new %s %r=%r",
-                                     name.lower(), key_val[0], instructions[key_val[0]])
+                        key = key_val[0]
+                        val = key_val[1] if len(key_val) > 1 else ''
+                        if this_insn == name:
+                            instructions[key] = val
+                            logger.debug("new %s %r=%r", name.lower(), key, val)
+                        if this_insn == 'ENV':
+                            envs[key] = val
+
         logger.debug("instructions: %r", instructions)
         return Labels(instructions, self) if name == 'LABEL' else Envs(instructions, self)
 
