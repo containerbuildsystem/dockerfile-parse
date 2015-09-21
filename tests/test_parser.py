@@ -363,6 +363,8 @@ ENV e=\"f g\"
         ('\\"$V', '"v'),
         ("\\'$V", "'v"),
         ('$V}', 'v}'),
+        ('${}', ''),
+        ("'\\'$V'\\'", "\\v\\"),
     ])
     def test_env_replace(self, dfparser, label, expected):
         dfparser.lines = ["FROM fedora\n",
@@ -391,6 +393,7 @@ ENV e=\"f g\"
     @pytest.mark.parametrize('label', [
         '${V',
         '"${V"',
+        '${{{{V}',
     ])
     def test_env_invalid(self, dfparser, label):
         """
