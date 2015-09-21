@@ -13,7 +13,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='dockerfile-parse',
-    version='0.0.4',
+    version='0.0.5',
     description='Python library for Dockerfile manipulation',
     author='Jiri Popelka',
     author_email='jpopelka@redhat.com',
