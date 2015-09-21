@@ -34,6 +34,9 @@ class EnvSubst(object):
     Substitute environment variables when quoting allows
     """
 
+    SQUOTE = "'"
+    DQUOTE = '"'
+
     def __init__(self, s, envs):
         """
         :param s: str, string to perform substitution on
@@ -41,7 +44,9 @@ class EnvSubst(object):
         """
         self.stream = StringIO(s)
         self.envs = envs
-        self.quotes = 0
+
+        # Initial state
+        self.quotes = None  # the quoting character in force, or None
         self.escaped = False
 
     def substitute(self):
@@ -56,19 +61,18 @@ class EnvSubst(object):
 
         :param ch: str, next character
         """
-        if self.quotes == 0:
-            if ch == "'":
-                self.quotes = 1
-            elif ch == '"':
-                self.quotes = 2
-
-        elif self.quotes == 1 and ch == "'":
-            self.quotes = 0
-        elif self.quotes == 2 and ch == '"':
-            self.quotes = 0
 
         # Set whether the next character is escaped
-        self.escaped = ch == '\\'
+        self.escaped = ch == '\\' and self.quotes != self.SQUOTE
+        if self.escaped:
+            return
+
+        if self.quotes is None:
+            if ch in (self.SQUOTE, self.DQUOTE):
+                self.quotes = ch
+
+        elif self.quotes == ch:
+            self.quotes = None
 
     def replace_parts(self):
         """
@@ -88,7 +92,7 @@ class EnvSubst(object):
                 self.escaped = False
                 continue
 
-            if ch == '$' and self.quotes != 1:
+            if ch == '$' and self.quotes != self.SQUOTE:
                 # Substitute environment variable
                 braced = False
                 varname = ''
