@@ -106,7 +106,7 @@ class DockerfileParser(object):
                     self.cached_content = ''.join(lines)
                 return lines
         except (IOError, OSError) as ex:
-            logger.error("Couldn't retrieve lines from dockerfile: %r" % ex)
+            logger.error("Couldn't retrieve lines from dockerfile: %r", ex)
             raise
 
     @lines.setter
@@ -122,7 +122,7 @@ class DockerfileParser(object):
             with open(self.dockerfile_path, 'w') as dockerfile:
                 dockerfile.writelines([u2b(l) for l in lines])
         except (IOError, OSError) as ex:
-            logger.error("Couldn't write lines to dockerfile: %r" % ex)
+            logger.error("Couldn't write lines to dockerfile: %r", ex)
             raise
 
     @property
@@ -140,7 +140,7 @@ class DockerfileParser(object):
                     self.cached_content = content
                 return content
         except (IOError, OSError) as ex:
-            logger.error("Couldn't retrieve content of dockerfile: %r" % ex)
+            logger.error("Couldn't retrieve content of dockerfile: %r", ex)
             raise
 
     @content.setter
@@ -156,7 +156,7 @@ class DockerfileParser(object):
             with open(self.dockerfile_path, 'w') as dockerfile:
                 dockerfile.write(u2b(content))
         except (IOError, OSError) as ex:
-            logger.error("Couldn't write content to dockerfile: %r" % ex)
+            logger.error("Couldn't write content to dockerfile: %r", ex)
             raise
 
     @property
@@ -354,7 +354,7 @@ class DockerfileParser(object):
         elif name == 'ENV':
             existing = self.envs
 
-        logger.debug("setting %s instructions: %r" % (name, instructions))
+        logger.debug("setting %s instructions: %r", name, instructions)
 
         to_delete = [k for k in existing if k not in instructions]
         for key in to_delete:
