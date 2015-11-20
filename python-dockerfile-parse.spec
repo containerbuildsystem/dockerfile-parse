@@ -5,6 +5,11 @@
 %{!?python2_version: %global python2_version %(%{__python2} -c "import sys; sys.stdout.write(sys.version[:3])")}
 %endif
 
+%if 0%{?rhel} && 0%{?rhel} <= 7
+%{!?py2_build: %global py2_build %{__python2} setup.py build}
+%{!?py2_install: %global py2_install %{__python2} setup.py install --skip-build --root %{buildroot}}
+%endif
+
 %if (0%{?fedora} >= 21 || 0%{?rhel} >= 8)
 %global with_python3 1
 %endif
@@ -65,18 +70,18 @@ Python 3 library for Dockerfile manipulation
 
 
 %build
-# build python package
-%{__python} setup.py build
+%py2_build
+
 %if 0%{?with_python3}
-%{__python3} setup.py build
+%py3_build
 %endif # with_python3
 
 
 %install
-%{__python} setup.py install --skip-build --root %{buildroot}
+%py2_install
 
 %if 0%{?with_python3}
-%{__python3} setup.py install --skip-build --root %{buildroot}
+%py3_install
 %endif # with_python3
 
 
@@ -112,6 +117,7 @@ LANG=en_US.utf8 py.test-%{python3_version} -vv tests
 %changelog
 * Fri Nov 20 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.5-3
 - don't use py3dir
+- new python macros
 
 * Fri Nov 06 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.5-2
 - %%check section
