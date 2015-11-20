@@ -42,6 +42,11 @@ BuildRequires:  pytest
 
 Requires:       python-setuptools
 
+# defined in /usr/lib/rpm/macros.d/macros.python
+# if python_provide() is defined, call python_provide(python-%%{project})
+# which may eventually add Provides: ... (see the function definition)
+%{?python_provide:%python_provide python-%{project}}
+
 %if 0%{?with_python3}
 BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
@@ -59,6 +64,7 @@ Python library for Dockerfile manipulation
 Summary:        Python 3 library for Dockerfile manipulation
 Group:          Development/Tools
 License:        BSD
+%{?python_provide:%python_provide python3-%{project}}
 Requires:       python3-setuptools
 
 %description -n python3-%{project}
@@ -118,6 +124,7 @@ LANG=en_US.utf8 py.test-%{python3_version} -vv tests
 * Fri Nov 20 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.5-3
 - don't use py3dir
 - new python macros
+- use python_provide macro
 
 * Fri Nov 06 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.5-2
 - %%check section
