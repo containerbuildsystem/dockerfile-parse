@@ -19,7 +19,7 @@
 
 Name:           python-dockerfile-parse
 Version:        0.0.5
-Release:        2%{?dist}
+Release:        3%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
 Group:          Development/Tools
@@ -61,40 +61,32 @@ Python 3 library for Dockerfile manipulation
 %endif # with_python3
 
 %prep
-%setup -qn %{project}-%{commit}
-%if 0%{?with_python3}
-rm -rf %{py3dir}
-cp -a . %{py3dir}
-find %{py3dir} -name '*.py' | xargs sed -i '1s|^#!python|#!%{__python3}|'
-%endif # with_python3
+%setup -n %{project}-%{commit}
 
 
 %build
 # build python package
 %{__python} setup.py build
 %if 0%{?with_python3}
-pushd %{py3dir}
 %{__python3} setup.py build
-popd
 %endif # with_python3
 
 
 %install
+%{__python} setup.py install --skip-build --root %{buildroot}
+
 %if 0%{?with_python3}
-pushd %{py3dir}
 %{__python3} setup.py install --skip-build --root %{buildroot}
-popd
 %endif # with_python3
 
-%{__python} setup.py install --skip-build --root %{buildroot}
 
 %if 0%{?with_check}
 %check
+LANG=en_US.utf8 py.test-%{python2_version} -vv tests
+
 %if 0%{?with_python3}
 LANG=en_US.utf8 py.test-%{python3_version} -vv tests
 %endif # with_python3
-
-LANG=en_US.utf8 py.test-%{python2_version} -vv tests
 %endif # with_check
 
 %files
@@ -118,6 +110,9 @@ LANG=en_US.utf8 py.test-%{python2_version} -vv tests
 %endif # with_python3
 
 %changelog
+* Fri Nov 20 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.5-3
+- don't use py3dir
+
 * Fri Nov 06 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.5-2
 - %%check section
 
