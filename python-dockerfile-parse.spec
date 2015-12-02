@@ -102,7 +102,7 @@ LANG=en_US.utf8 py.test-%{python3_version} -vv tests
 
 %files
 %doc README.md
-%{!?_licensedir:%global license %%doc}
+%{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{python2_sitelib}/dockerfile_parse
 %{python2_sitelib}/dockerfile_parse/*.*
@@ -111,7 +111,7 @@ LANG=en_US.utf8 py.test-%{python3_version} -vv tests
 %if 0%{?with_python3}
 %files -n python3-%{project}
 %doc README.md
-%{!?_licensedir:%global license %%doc}
+%{!?_licensedir:%global license %doc}
 %license LICENSE
 %dir %{python3_sitelib}/dockerfile_parse
 %dir %{python3_sitelib}/dockerfile_parse/__pycache__
