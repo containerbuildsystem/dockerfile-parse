@@ -53,7 +53,9 @@ CMD {0}""".format(NON_ASCII)
                           "    # comment\n",    # should be ignored
                           "    bar  \n",        # extra ws, continuation line
                           "USER  {0}\n".format(NON_ASCII),
-                          "# comment \\\n",    # extra ws
+                          "# comment \\\n",     # extra ws
+                          "# comment \\ \n",    # extra ws with a space
+                          "# comment \\\\ \n",  # two backslashes
                           "RUN command1\n",
                           "RUN command2 && \\\n",
                           "    # comment\n",
@@ -75,13 +77,13 @@ CMD {0}""".format(NON_ASCII)
                                        'content': 'USER  {0}\n'.format(NON_ASCII),
                                        'value': '{0}'.format(NON_ASCII)},
                                       {'instruction': 'RUN',
-                                       'startline': 9,
-                                       'endline': 9,
+                                       'startline': 11,
+                                       'endline': 11,
                                        'content': 'RUN command1\n',
                                        'value': 'command1'},
                                       {'instruction': 'RUN',
-                                       'startline': 10,
-                                       'endline': 12,
+                                       'startline': 12,
+                                       'endline': 14,
                                        'content': 'RUN command2 && \\\n    command3\n',
                                        'value': 'command2 &&     command3'}]
 
