@@ -50,6 +50,7 @@ CMD {0}""".format(NON_ASCII)
                           "   base\n",          # extra ws, continuation line
                           " # comment\n",
                           " label  foo  \\\n",  # extra ws
+                          "    # comment\n",    # should be ignored
                           "    bar  \n",        # extra ws, continuation line
                           "USER  {0}".format(NON_ASCII)]   # extra ws, no newline
 
@@ -60,12 +61,12 @@ CMD {0}""".format(NON_ASCII)
                                        'value': 'base'},
                                       {'instruction': 'LABEL',
                                        'startline': 4,
-                                       'endline': 5,
+                                       'endline': 6,
                                        'content': ' label  foo  \\\n    bar  \n',
                                        'value': 'foo      bar'},
                                       {'instruction': 'USER',
-                                       'startline': 6,
-                                       'endline': 6,
+                                       'startline': 7,
+                                       'endline': 7,
                                        'content': 'USER  {0}'.format(NON_ASCII),
                                        'value': '{0}'.format(NON_ASCII)}]
 
