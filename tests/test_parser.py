@@ -86,6 +86,35 @@ USER  {0}""".format(NON_ASCII)
         base_img = dfparser.baseimage
         assert base_img.startswith('fedora')
 
+    def test_get_parent_env(self, tmpdir):
+        tmpdir_path = str(tmpdir.realpath())
+        p_env = {"bar": "baz"}
+        df1 = DockerfileParser(tmpdir_path, env_replace=True, parent_env=p_env)
+        df1.lines = [
+            "FROM parent\n",
+            "ENV foo=\"$bar\"\n",
+            "LABEL label=\"$foo $bar\"\n"
+        ]
+
+        # Even though we inherit an ENV, this .envs count should only be for the
+        # ENVs defined in *this* Dockerfile as we're parsing the Dockerfile and
+        # the parent_env is only to satisfy use of inhereted ENVs.
+        assert len(df1.envs) == 1
+        assert df1.envs.get('foo') == 'baz'
+        assert len(df1.labels) == 1
+        assert df1.labels.get('label') == 'baz baz'
+
+    def test_get_parent_env_from_scratch(self, tmpdir):
+        tmpdir_path = str(tmpdir.realpath())
+        p_env = {"bar": "baz"}
+        df1 = DockerfileParser(tmpdir_path, env_replace=True, parent_env=p_env)
+        df1.lines = [
+            "FROM scratch\n",
+        ]
+
+        assert not df1.envs
+
+
     def test_get_instructions_from_df(self, dfparser, instruction):
         dfparser.content = ""
         lines = []

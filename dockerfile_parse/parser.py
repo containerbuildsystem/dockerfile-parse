@@ -66,11 +66,12 @@ class Envs(dict):
 
 
 class DockerfileParser(object):
-    def __init__(self, path=None, cache_content=False, env_replace=True):
+    def __init__(self, path=None, cache_content=False, env_replace=True, parent_env=None):
         """
         Initialize path to Dockerfile
         :param path: path to (directory with) Dockerfile
         :param cache_content: cache Dockerfile content inside DockerfileParser
+        :param parent_env: python dict of inherited env vars from parent image
         """
         path = path or '.'
         if path.endswith(DOCKERFILE_FILENAME):
@@ -90,6 +91,12 @@ class DockerfileParser(object):
                 pass
 
         self.env_replace = env_replace
+
+        if parent_env:
+            logger.debug("Setting inherited parent image ENV vars: %s", parent_env)
+            self.parent_env = parent_env
+        else:
+            self.parent_env = {}
 
     @property
     def lines(self):
@@ -290,7 +297,7 @@ class DockerfileParser(object):
         if name != 'LABEL' and name != 'ENV':
             raise ValueError("Unsupported instruction '%s'", name)
         instructions = {}
-        envs = {}
+        envs = self.parent_env.copy()
         for insndesc in self.structure:
             this_insn = insndesc['instruction']
             if this_insn in (name, 'ENV'):
