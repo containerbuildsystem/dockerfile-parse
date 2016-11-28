@@ -92,9 +92,11 @@ class DockerfileParser(object):
 
         self.env_replace = env_replace
 
-        if parent_env:
+        if isinstance(parent_env, dict):
             logger.debug("Setting inherited parent image ENV vars: %s", parent_env)
             self.parent_env = parent_env
+        elif parent_env != None:
+            assert isinstance(parent_env, dict)
         else:
             self.parent_env = {}
 
