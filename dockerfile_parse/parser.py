@@ -21,6 +21,7 @@ except ImportError:
 
 from .constants import DOCKERFILE_FILENAME
 from .util import b2u, u2b, shlex_split, strip_quotes, remove_quotes, remove_nonescaped_quotes, EnvSubst
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +107,15 @@ class DockerfileParser(object):
         else:
             self.parent_env = {}
 
+    @contextmanager
+    def _open_dockerfile(self, mode):
+        if self.fileobj is not None:
+            self.fileobj.seek(0)
+            yield self.fileobj
+        else:
+            with open(self.dockerfile_path, mode) as dockerfile:
+                yield dockerfile
+
     @property
     def lines(self):
         """
@@ -115,24 +125,14 @@ class DockerfileParser(object):
             return self.cached_content.splitlines(True)
 
         try:
-            if self.fileobj is not None:
-                return self._load_lines(self.fileobj)
-            with open(self.dockerfile_path, 'r') as dockerfile:
-                return self._load_lines(dockerfile)
+            with self._open_dockerfile('r') as dockerfile:
+                lines = [b2u(l) for l in dockerfile.readlines()]
+                if self.cache_content:
+                    self.cached_content = ''.join(lines)
+                return lines
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve lines from dockerfile: %r", ex)
             raise
-
-    def _load_lines(self, dockerfile):
-        """
-        Loads lines from Dockerfile
-        :param dockerfile: file or file-like object as the Dockerfile
-        :return: list containing lines (unicode) from Dockerfile
-        """
-        lines = [b2u(l) for l in dockerfile.readlines()]
-        if self.cache_content:
-            self.cached_content = ''.join(lines)
-        return lines
 
     @lines.setter
     def lines(self, lines):
@@ -144,23 +144,11 @@ class DockerfileParser(object):
             self.cached_content = ''.join([b2u(l) for l in lines])
 
         try:
-            if self.fileobj is not None:
-                self._save_lines(self.fileobj, lines)
-            else:
-                with open(self.dockerfile_path, 'w') as dockerfile:
-                    self._save_lines(dockerfile, lines)
+            with self._open_dockerfile('w') as dockerfile:
+                dockerfile.writelines([u2b(l) for l in lines])
         except (IOError, OSError) as ex:
             logger.error("Couldn't write lines to dockerfile: %r", ex)
             raise
-
-    def _save_lines(self, dockerfile, lines):
-        """
-        Fill content of Dockerfile with lines
-        :param dockerfile:  file or file-like object as the Dockerfile
-        :param lines: list of lines to be written to Dockerfile
-        """
-        dockerfile.writelines([u2b(l) for l in lines])
-
 
     @property
     def content(self):
@@ -171,24 +159,14 @@ class DockerfileParser(object):
             return self.cached_content
 
         try:
-            if self.fileobj is not None:
-                return self._load_content(self.fileobj)
-            with open(self.dockerfile_path, 'r') as dockerfile:
-                return self._load_content(dockerfile)
+            with self._open_dockerfile('r') as dockerfile:
+                content = b2u(dockerfile.read())
+                if self.cache_content:
+                    self.cached_content = content
+                return content
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve content of dockerfile: %r", ex)
             raise
-
-    def _load_content(self, dockerfile):
-        """
-        Loads content from Dockerfile
-        :param dockerfile:  file or file-like object as the Dockerfile
-        :return: string (unicode) with Dockerfile content
-        """
-        content = b2u(dockerfile.read())
-        if self.cache_content:
-            self.cached_content = content
-        return content
 
     @content.setter
     def content(self, content):
@@ -200,22 +178,11 @@ class DockerfileParser(object):
             self.cached_content = b2u(content)
 
         try:
-            if self.fileobj is not None:
-                self._save_content(self.fileobj, content)
-            else:
-                with open(self.dockerfile_path, 'w') as dockerfile:
-                    self._save_content(dockerfile, content)
+            with self._open_dockerfile('w') as dockerfile:
+                dockerfile.write(u2b(content))
         except (IOError, OSError) as ex:
             logger.error("Couldn't write content to dockerfile: %r", ex)
             raise
-
-    def _save_content(self, dockerfile, content):
-        """
-        Overwrite Dockerfile with specified content
-        :param content: string to be written to Dockerfile
-        :param dockerfile: file or file-like object as the Dockerfile
-        """
-        dockerfile.write(u2b(content))
 
     @property
     def structure(self):
