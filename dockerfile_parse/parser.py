@@ -73,11 +73,11 @@ class DockerfileParser(object):
                  parent_env=None,
                  fileobj=None):
         """
-        Initialize path to Dockerfile
+        Initialize source of Dockerfile
         :param path: path to (directory with) Dockerfile
         :param cache_content: cache Dockerfile content inside DockerfileParser
         :param parent_env: python dict of inherited env vars from parent image
-        :param fileobj: file-like object used to cache content of Dockerfile
+        :param fileobj: file-like object containing Dockerfile content
         """
         path = path or '.'
         if path.endswith(DOCKERFILE_FILENAME):
@@ -110,8 +110,19 @@ class DockerfileParser(object):
     @contextmanager
     def _open_dockerfile(self, mode):
         if self.fileobj is not None:
-            self.fileobj.seek(0)
+            try:
+                self.fileobj.seek(0)
+            except IOError:
+                # not seekable fileobj
+                pass
+
             yield self.fileobj
+
+            try:
+                self.fileobj.seek(0)
+            except IOError:
+                # not seekable fileobj
+                pass
         else:
             with open(self.dockerfile_path, mode) as dockerfile:
                 yield dockerfile
