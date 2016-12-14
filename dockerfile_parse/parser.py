@@ -77,21 +77,25 @@ class DockerfileParser(object):
         :param path: path to (directory with) Dockerfile
         :param cache_content: cache Dockerfile content inside DockerfileParser
         :param parent_env: python dict of inherited env vars from parent image
-        :param fileobj: file-like object containing Dockerfile content
+        :param fileobj: seekable file-like object containing Dockerfile content
         """
 
-        if path is not None and fileobj is not None:
-            raise ValueError("Parameters path and fileobj cannot be used together.")
+        self.fileobj = fileobj
 
-        path = path or '.'
-        if path.endswith(DOCKERFILE_FILENAME):
-            self.dockerfile_path = path
+        if self.fileobj is not None:
+            if path is not None:
+                raise ValueError("Parameters path and fileobj cannot be used together.")
+            else:
+                self.fileobj.seek(0)
         else:
-            self.dockerfile_path = os.path.join(path, DOCKERFILE_FILENAME)
+            path = path or '.'
+            if path.endswith(DOCKERFILE_FILENAME):
+                self.dockerfile_path = path
+            else:
+                self.dockerfile_path = os.path.join(path, DOCKERFILE_FILENAME)
 
         self.cache_content = cache_content
         self.cached_content = ''  # unicode string
-        self.fileobj = fileobj
 
         if cache_content:
             try:
@@ -114,19 +118,9 @@ class DockerfileParser(object):
     @contextmanager
     def _open_dockerfile(self, mode):
         if self.fileobj is not None:
-            try:
-                self.fileobj.seek(0)
-            except IOError:
-                # not seekable fileobj
-                pass
-
+            self.fileobj.seek(0)
             yield self.fileobj
-
-            try:
-                self.fileobj.seek(0)
-            except IOError:
-                # not seekable fileobj
-                pass
+            self.fileobj.seek(0)
         else:
             with open(self.dockerfile_path, mode) as dockerfile:
                 yield dockerfile
