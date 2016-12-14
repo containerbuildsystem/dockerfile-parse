@@ -10,11 +10,12 @@ of the BSD license. See the LICENSE file for details.
 from __future__ import unicode_literals
 
 import pytest
+import six
 
 from dockerfile_parse import DockerfileParser
 
 
-@pytest.fixture(params=[False, True])
+@pytest.fixture(params=[(dockerfile, cache_content) for dockerfile in ['fileobj', 'path'] for cache_content in [True, False]])
 def dfparser(tmpdir, request):
     """
 
@@ -22,8 +23,13 @@ def dfparser(tmpdir, request):
     :param request: parameter, cache_content arg to DockerfileParser
     :return: DockerfileParser instance
     """
-    tmpdir_path = str(tmpdir.realpath())
-    return DockerfileParser(tmpdir_path, request.param)
+
+    if request.param[1] == 'path':
+        tmpdir_path = str(tmpdir.realpath())
+        return DockerfileParser(path=tmpdir_path, cache_content=request.param[0])
+    else:
+        file = six.StringIO()
+        return DockerfileParser(fileobj=file, cache_content=request.param[0])
 
 
 @pytest.fixture(params=['LABEL', 'ENV'])

@@ -119,6 +119,8 @@ class DockerfileParser(object):
     def _open_dockerfile(self, mode):
         if self.fileobj is not None:
             self.fileobj.seek(0)
+            if mode == 'w':
+                self.fileobj.truncate()
             yield self.fileobj
             self.fileobj.seek(0)
         else:
