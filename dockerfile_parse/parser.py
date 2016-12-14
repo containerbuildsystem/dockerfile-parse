@@ -79,6 +79,10 @@ class DockerfileParser(object):
         :param parent_env: python dict of inherited env vars from parent image
         :param fileobj: file-like object containing Dockerfile content
         """
+
+        if path is not None and fileobj is not None:
+            raise ValueError("Parameters path and fileobj cannot be used together.")
+
         path = path or '.'
         if path.endswith(DOCKERFILE_FILENAME):
             self.dockerfile_path = path
