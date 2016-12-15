@@ -11,6 +11,8 @@ from __future__ import unicode_literals
 
 import json
 import pytest
+import six
+import sys
 
 from dockerfile_parse import DockerfileParser
 from tests.fixtures import dfparser, instruction
@@ -452,3 +454,13 @@ ENV e=\"f g\"
                           "ENV V=v\n",
                           "LABEL TEST={0}\n".format(label)]
         assert dfparser.labels['TEST'] == expected
+
+    def test_path_and_fileobj_together(self):
+        with pytest.raises(ValueError):
+            DockerfileParser(path='.', fileobj=six.StringIO())
+
+    def test_nonseekable_fileobj(self):
+        with pytest.raises(AttributeError):
+            DockerfileParser(fileobj=sys.stdin)
+
+
