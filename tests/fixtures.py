@@ -15,7 +15,7 @@ import six
 from dockerfile_parse import DockerfileParser
 
 
-@pytest.fixture(params=[(dockerfile, cache_content) for dockerfile in ['fileobj', 'path'] for cache_content in [True, False]])
+@pytest.fixture(params=[(use_fileobj, cache_content) for use_fileobj in [True, False] for cache_content in [True, False]])
 def dfparser(tmpdir, request):
     """
 
@@ -24,12 +24,14 @@ def dfparser(tmpdir, request):
     :return: DockerfileParser instance
     """
 
-    if request.param[1] == 'path':
-        tmpdir_path = str(tmpdir.realpath())
-        return DockerfileParser(path=tmpdir_path, cache_content=request.param[0])
-    else:
+    use_fileobj, cache_content = request.param
+    if use_fileobj:
         file = six.StringIO()
-        return DockerfileParser(fileobj=file, cache_content=request.param[0])
+        return DockerfileParser(fileobj=file, cache_content=cache_content)
+    else:
+        tmpdir_path = str(tmpdir.realpath())
+        return DockerfileParser(path=tmpdir_path, cache_content=cache_content)
+
 
 
 @pytest.fixture(params=['LABEL', 'ENV'])
