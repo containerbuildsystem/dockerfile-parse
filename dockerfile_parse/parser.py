@@ -77,7 +77,7 @@ class DockerfileParser(object):
         :param path: path to (directory with) Dockerfile
         :param cache_content: cache Dockerfile content inside DockerfileParser
         :param parent_env: python dict of inherited env vars from parent image
-        :param fileobj: seekable file-like object containing Dockerfile content
+        :param fileobj: seekable file-like object containing Dockerfile content (will be truncated on write)
         """
 
         self.fileobj = fileobj
