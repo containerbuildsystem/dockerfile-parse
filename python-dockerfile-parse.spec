@@ -23,8 +23,8 @@
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-dockerfile-parse
-Version:        0.0.5
-Release:        3%{?dist}
+Version:        0.0.6
+Release:        1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
 Group:          Development/Tools
@@ -121,6 +121,9 @@ LANG=en_US.utf8 py.test-%{python3_version} -vv tests
 %endif # with_python3
 
 %changelog
+* Tue Dec 20 2016 Tim Waugh <twaugh@redhat.com> - 0.0.6-1
+- 0.0.6
+
 * Fri Nov 20 2015 Jiri Popelka <jpopelka@redhat.com> - 0.0.5-3
 - don't use py3dir
 - new python macros
