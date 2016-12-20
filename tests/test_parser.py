@@ -134,7 +134,6 @@ USER  {0}""".format(NON_ASCII)
 
         assert not df1.envs
 
-
     def test_get_instructions_from_df(self, dfparser, instruction):
         dfparser.content = ""
         lines = []
@@ -238,8 +237,7 @@ ENV j='k' l=m
 
     @pytest.mark.parametrize(('existing',
                               'delete_key',
-                              'expected',
-    ), [
+                              'expected'), [
         # Delete non-existing key
         (['a b\n',
           'x="y z"\n'],
@@ -291,8 +289,7 @@ ENV j='k' l=m
 
     @pytest.mark.parametrize(('existing',
                               'new',
-                              'expected',
-    ), [
+                              'expected'), [
         # Simple test: set an instruction
         (['a b\n',
           'x="y z"\n'],
@@ -480,5 +477,3 @@ ENV e=\"f g\"
     def test_nonseekable_fileobj(self):
         with pytest.raises(AttributeError):
             DockerfileParser(fileobj=sys.stdin)
-
-

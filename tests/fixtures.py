@@ -33,7 +33,6 @@ def dfparser(tmpdir, request):
         return DockerfileParser(path=tmpdir_path, cache_content=cache_content)
 
 
-
 @pytest.fixture(params=['LABEL', 'ENV'])
 def instruction(request):
     """
