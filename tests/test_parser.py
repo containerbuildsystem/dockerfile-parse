@@ -9,8 +9,11 @@ of the BSD license. See the LICENSE file for details.
 
 from __future__ import unicode_literals
 
+import inspect
 import json
+import os
 import pytest
+import re
 import six
 import sys
 
@@ -21,6 +24,26 @@ NON_ASCII = "žluťoučký"
 
 
 class TestDockerfileParser(object):
+    def test_all_versions_match(self):
+        def read_version(fp, regex):
+            with open(fp, "r") as fd:
+                content = fd.read()
+                found = re.findall(regex, content)
+                if len(found) == 1:
+                    return found[0]
+                else:
+                    raise Exception("Version not found!")
+
+        import dockerfile_parse
+        from dockerfile_parse import __version__ as module_version
+        fp = inspect.getfile(dockerfile_parse)
+        project_dir = os.path.dirname(os.path.dirname(fp))
+        specfile = os.path.join(project_dir, "python-dockerfile-parse.spec")
+        setup_py = os.path.join(project_dir, "setup.py")
+        spec_version = read_version(specfile, r"\nVersion:\s*(.+?)\s*\n")
+        setup_py_version = read_version(setup_py, r"version=['\"](.+)['\"]")
+        assert spec_version == module_version
+        assert setup_py_version == module_version
 
     def test_dockerfileparser(self, dfparser):
         df_content = """\
