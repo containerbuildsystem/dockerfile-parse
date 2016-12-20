@@ -19,7 +19,7 @@
 %global owner DBuildService
 %global project dockerfile-parse
 
-%global commit 36af022e527b0ac74bd27d7c2962207c0fd41632
+%global commit 9d2da5f60f020647651fbc3030c8337ac854438d
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-dockerfile-parse
