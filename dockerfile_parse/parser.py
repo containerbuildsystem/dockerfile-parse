@@ -225,10 +225,13 @@ class DockerfileParser(object):
         lineno = -1
         insnre = re.compile(r'^\s*(\w+)\s+(.*)$')  # matched group is insn
         contre = re.compile(r'^.*\\\s*$')          # line continues?
+        commentre = re.compile(r'^\s*#')           # line is a comment?
         in_continuation = False
         current_instruction = None
         for line in self.lines:
             lineno += 1
+            if commentre.match(line):
+                continue
             if not in_continuation:
                 m = insnre.match(line)
                 if not m:

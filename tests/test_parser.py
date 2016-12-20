@@ -52,8 +52,16 @@ CMD {0}""".format(NON_ASCII)
                           "   base\n",          # extra ws, continuation line
                           " # comment\n",
                           " label  foo  \\\n",  # extra ws
+                          "    # comment\n",    # should be ignored
                           "    bar  \n",        # extra ws, continuation line
-                          "USER  {0}".format(NON_ASCII)]   # extra ws, no newline
+                          "USER  {0}\n".format(NON_ASCII),
+                          "# comment \\\n",     # extra ws
+                          "# comment \\ \n",    # extra ws with a space
+                          "# comment \\\\ \n",  # two backslashes
+                          "RUN command1\n",
+                          "RUN command2 && \\\n",
+                          "    # comment\n",
+                          "    command3\n"]
 
         assert dfparser.structure == [{'instruction': 'FROM',
                                        'startline': 1,  # 0-based
@@ -62,14 +70,24 @@ CMD {0}""".format(NON_ASCII)
                                        'value': 'base'},
                                       {'instruction': 'LABEL',
                                        'startline': 4,
-                                       'endline': 5,
+                                       'endline': 6,
                                        'content': ' label  foo  \\\n    bar  \n',
                                        'value': 'foo      bar'},
                                       {'instruction': 'USER',
-                                       'startline': 6,
-                                       'endline': 6,
-                                       'content': 'USER  {0}'.format(NON_ASCII),
-                                       'value': '{0}'.format(NON_ASCII)}]
+                                       'startline': 7,
+                                       'endline': 7,
+                                       'content': 'USER  {0}\n'.format(NON_ASCII),
+                                       'value': '{0}'.format(NON_ASCII)},
+                                      {'instruction': 'RUN',
+                                       'startline': 11,
+                                       'endline': 11,
+                                       'content': 'RUN command1\n',
+                                       'value': 'command1'},
+                                      {'instruction': 'RUN',
+                                       'startline': 12,
+                                       'endline': 14,
+                                       'content': 'RUN command2 && \\\n    command3\n',
+                                       'value': 'command2 &&     command3'}]
 
     def test_dockerfile_json(self, dfparser):
         dfparser.content = """\
