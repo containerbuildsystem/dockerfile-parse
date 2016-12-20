@@ -37,7 +37,7 @@ BuildArch:      noarch
 BuildRequires:  python2-devel
 BuildRequires:  python-setuptools
 %if 0%{?with_check}
-BuildRequires:  pytest
+BuildRequires:  pytest, python-six
 %endif # with_check
 
 Requires:       python-setuptools
