@@ -2,6 +2,8 @@ dockerfile-parse
 ====
 
 [![Build Status](https://travis-ci.org/DBuildService/dockerfile-parse.svg?branch=master)](https://travis-ci.org/DBuildService/dockerfile-parse)
+[![Coverage Status](https://coveralls.io/repos/DBuildService/dockerfile-parse/badge.svg?branch=master&service=github)]
+(https://coveralls.io/github/DBuildService/dockerfile-parse?branch=master)
 
 Python library for parsing Dockerfile files.
 

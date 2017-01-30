@@ -1,16 +1,22 @@
 language: python
-python:
-  - "2.6"
-  - "2.7"
-  - "3.4"
-  - "3.5"
+matrix:
+  include:
+    - python: "2.6"
+      env: TOXENV=py26
+    - python: "2.7"
+      env: TOXENV=py27
+    - python: "3.4"
+      env: TOXENV=py34
+    - python: "3.5"
+      env: TOXENV=py35
 # command to install dependencies
 install:
-  - "pip install -r requirements.txt"
-  - "pip install -r tests/requirements.txt"
+  - "pip install tox"
+  - "pip install coveralls"
 # command to run tests
-script: py.test -vv
+script: tox
 # run in a docker container
 sudo: false
 notifications:
   email: false
+after_success: "coveralls"
