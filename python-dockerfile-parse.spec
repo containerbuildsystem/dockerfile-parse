@@ -1,126 +1,117 @@
-%if 0%{?rhel} && 0%{?rhel} <= 6
+%if 0%{?rhel} && 0%{?rhel} <= 7
+%{!?py2_build: %global py2_build %{__python2} setup.py build}
+%{!?py2_install: %global py2_install %{__python2} setup.py install --skip-build --root %{buildroot}}
+%global py2name python
+%bcond_with python3
+%if 0%{?rhel} <= 6
 %{!?__python2: %global __python2 /usr/bin/python2}
 %{!?python2_sitelib: %global python2_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 %{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
 %{!?python2_version: %global python2_version %(%{__python2} -c "import sys; sys.stdout.write(sys.version[:3])")}
 %endif
-
-%if 0%{?rhel} && 0%{?rhel} <= 7
-%{!?py2_build: %global py2_build %{__python2} setup.py build}
-%{!?py2_install: %global py2_install %{__python2} setup.py install --skip-build --root %{buildroot}}
+%else
+%bcond_without python3
+%global py2name python2
 %endif
 
-%if (0%{?fedora} >= 21 || 0%{?rhel} >= 8)
-%global with_python3 1
-%endif
+%bcond_without tests
 
-%global with_check 1
-
-%global owner DBuildService
-%global project dockerfile-parse
+%global srcname dockerfile-parse
+%global modname %(n=%{srcname}; echo ${n//-/_})
 
 %global commit 9d2da5f60f020647651fbc3030c8337ac854438d
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
-Name:           python-dockerfile-parse
+Name:           python-%{srcname}
 Version:        0.0.6
 Release:        1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
-Group:          Development/Tools
 License:        BSD
-URL:            https://github.com/%{owner}/%{project}
-Source0:        https://github.com/%{owner}/%{project}/archive/%{commit}/%{project}-%{commit}.tar.gz
+URL:            https://github.com/DBuildService/dockerfile-parse
+Source0:        %{url}/archive/%{commit}/%{srcname}-%{commit}.tar.gz
 
 BuildArch:      noarch
 
-BuildRequires:  python2-devel
-BuildRequires:  python-setuptools
-%if 0%{?with_check}
-BuildRequires:  pytest, python-six
-%endif # with_check
+%description
+%{summary}.
 
-Requires:       python-setuptools
+%package -n python2-%{srcname}
+Summary:        %{summary}
+%{?python_provide:%python_provide python2-%{srcname}}
+BuildRequires:  %{py2name}-devel
+BuildRequires:  %{py2name}-setuptools, %{py2name}-six
+%if 0%{?rhel} && 0%{?rhel} <= 7
+BuildRequires:  pytest
+%else
+BuildRequires:  python2-pytest
+%endif
 
-# defined in /usr/lib/rpm/macros.d/macros.python
-# if python_provide() is defined, call python_provide(python-%%{project})
-# which may eventually add Provides: ... (see the function definition)
-%{?python_provide:%python_provide python-%{project}}
+%description -n python2-%{srcname}
+%{summary}.
 
-%if 0%{?with_python3}
+Python 2 version.
+
+%if %{with python3}
+%package -n python3-%{srcname}
+Summary:        %{summary}
+%{?python_provide:%python_provide python3-%{srcname}}
 BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
-%if 0%{?with_check}
-BuildRequires:  python3-pytest
-%endif # with_check
-%endif # with_python3
+%if %{with tests}
+BuildRequires:  python3-six, python3-pytest
+%endif
 
+%description -n python3-%{srcname}
+%{summary}.
 
-%description
-Python library for Dockerfile manipulation
-
-%if 0%{?with_python3}
-%package -n python3-%{project}
-Summary:        Python 3 library for Dockerfile manipulation
-Group:          Development/Tools
-License:        BSD
-%{?python_provide:%python_provide python3-%{project}}
-Requires:       python3-setuptools
-
-%description -n python3-%{project}
-Python 3 library for Dockerfile manipulation
-%endif # with_python3
+Python 3 version.
+%endif
 
 %prep
-%setup -n %{project}-%{commit}
-
+%setup -n %{srcname}-%{commit}
 
 %build
 %py2_build
-
-%if 0%{?with_python3}
+%if %{with python3}
 %py3_build
-%endif # with_python3
-
+%endif
 
 %install
 %py2_install
-
-%if 0%{?with_python3}
+%if %{with python3}
 %py3_install
-%endif # with_python3
+%endif
 
-
-%if 0%{?with_check}
+%if %{with tests}
 %check
-LANG=en_US.utf8 py.test-%{python2_version} -vv tests
+export LANG=C.utf8
+py.test-%{python2_version} -v tests
+%if %{with python3}
+py.test-%{python3_version} -v tests
+%endif
+%endif
 
-%if 0%{?with_python3}
-LANG=en_US.utf8 py.test-%{python3_version} -vv tests
-%endif # with_python3
-%endif # with_check
-
-%files
-%doc README.md
-%{!?_licensedir:%global license %doc}
+%files -n %{py2name}-%{srcname}
+%{!?_licensedir:%global license %%doc}
 %license LICENSE
-%dir %{python2_sitelib}/dockerfile_parse
-%{python2_sitelib}/dockerfile_parse/*.*
-%{python2_sitelib}/dockerfile_parse-%{version}-py2.*.egg-info
-
-%if 0%{?with_python3}
-%files -n python3-%{project}
 %doc README.md
-%{!?_licensedir:%global license %doc}
+%{python2_sitelib}/%{modname}-*.egg-info/
+%{python2_sitelib}/%{modname}/
+
+%if %{with python3}
+%files -n python3-%{srcname}
+%{!?_licensedir:%global license %%doc}
 %license LICENSE
-%dir %{python3_sitelib}/dockerfile_parse
-%dir %{python3_sitelib}/dockerfile_parse/__pycache__
-%{python3_sitelib}/dockerfile_parse/*.*
-%{python3_sitelib}/dockerfile_parse/__pycache__/*.py*
-%{python3_sitelib}/dockerfile_parse-%{version}-py3.*.egg-info
-%endif # with_python3
+%doc README.md
+%{python3_sitelib}/%{modname}-*.egg-info/
+%{python3_sitelib}/%{modname}/
+%endif
 
 %changelog
+* Fri Feb  3 2017 Tim Waugh <twaugh@redhat.com>
+- Incorporate modernisations from Fedora spec file.
+
 * Tue Dec 20 2016 Tim Waugh <twaugh@redhat.com> - 0.0.6-1
 - 0.0.6
 
