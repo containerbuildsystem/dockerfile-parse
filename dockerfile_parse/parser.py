@@ -13,15 +13,18 @@ import json
 import logging
 import os
 import re
+from contextlib import contextmanager
+
+from .constants import DOCKERFILE_FILENAME
+from .util import (b2u, extract_labels_or_envs, get_key_val_dictionary,
+                   remove_quotes, shlex_split, u2b, Context)
+
 try:
     # py3
     from shlex import quote
 except ImportError:
     from pipes import quote
 
-from .constants import DOCKERFILE_FILENAME
-from .util import b2u, u2b, shlex_split, strip_quotes, remove_quotes, remove_nonescaped_quotes, EnvSubst
-from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
@@ -330,40 +333,20 @@ class DockerfileParser(object):
             raise ValueError("Unsupported instruction '%s'", name)
         instructions = {}
         envs = self.parent_env.copy()
-        for insndesc in self.structure:
-            this_insn = insndesc['instruction']
-            if this_insn in (name, 'ENV'):
-                logger.debug("%s value: %r", name.lower(), insndesc['value'])
-                shlex_splits = shlex_split(insndesc['value'],
-                                           env_replace=env_replace, envs=envs)
-                if '=' not in shlex_splits[0]:  # LABEL/ENV name value
-                    # split it to first (name) and the rest (value)
-                    key_val = insndesc['value'].split(None, 1)
-                    key = strip_quotes(key_val[0])
-                    try:
-                        val = key_val[1]
-                    except IndexError:
-                        val = ''
 
-                    if env_replace:
-                        val = EnvSubst(val, envs).substitute()
-
-                    val = remove_nonescaped_quotes(val)
-                    if this_insn == name:
-                        instructions[key] = val
-                        logger.debug("new %s %r=%r", name.lower(), key, val)
-                    if env_replace and this_insn == 'ENV':
-                        envs[key] = val
-                else:  # LABEL/ENV "name"="value"
-                    for token in shlex_splits:
-                        key_val = token.split("=", 1)
-                        key = key_val[0]
-                        val = key_val[1] if len(key_val) > 1 else ''
-                        if this_insn == name:
-                            instructions[key] = val
-                            logger.debug("new %s %r=%r", name.lower(), key, val)
-                        if this_insn == 'ENV':
-                            envs[key] = val
+        for instruction_desc in self.structure:
+            this_instruction = instruction_desc['instruction']
+            if this_instruction in (name, 'ENV'):
+                logger.debug("%s value: %r", name.lower(), instruction_desc['value'])
+                key_val_list = extract_labels_or_envs(env_replace=env_replace,
+                                                      envs=envs,
+                                                      instruction_value=instruction_desc['value'])
+                for key, value in key_val_list:
+                    if this_instruction == name:
+                        instructions[key] = value
+                        logger.debug("new %s %r=%r", name.lower(), key, value)
+                    if this_instruction == 'ENV':
+                        envs[key] = value
 
         logger.debug("instructions: %r", instructions)
         return Labels(instructions, self) if name == 'LABEL' else Envs(instructions, self)
@@ -549,3 +532,25 @@ class DockerfileParser(object):
             lines = self.lines
             lines += new_line
             self.lines = lines
+
+    @property
+    def context_structure(self):
+        """
+        :return: list of Context objects
+            (Contains info about labels and environment variables for each line.)
+        """
+        instructions = []
+        last_context = Context()
+        for instr in self.structure:
+            context = Context(envs=dict(last_context.envs),
+                              labels=dict(last_context.labels))
+            instruction_type = instr['instruction']
+            if instruction_type in ["ENV", "LABEL"]:
+                val = get_key_val_dictionary(instruction_value=instr['value'],
+                                             env_replace=self.env_replace,
+                                             envs=last_context.envs)
+                context.set_line_value(context_type=instruction_type, value=val)
+
+            instructions.append(context)
+            last_context = context
+        return instructions
