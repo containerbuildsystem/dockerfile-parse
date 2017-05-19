@@ -16,6 +16,7 @@ import pytest
 import re
 import six
 import sys
+from textwrap import dedent
 
 from dockerfile_parse import DockerfileParser
 from tests.fixtures import dfparser, instruction
@@ -46,9 +47,9 @@ class TestDockerfileParser(object):
         assert setup_py_version == module_version
 
     def test_dockerfileparser(self, dfparser):
-        df_content = """\
-FROM fedora
-CMD {0}""".format(NON_ASCII)
+        df_content = dedent("""\
+            FROM fedora
+            CMD {0}""".format(NON_ASCII))
         df_lines = ["FROM fedora\n", "CMD {0}".format(NON_ASCII)]
 
         dfparser.content = ""
@@ -113,11 +114,11 @@ CMD {0}""".format(NON_ASCII)
                                        'value': 'command2 &&     command3'}]
 
     def test_dockerfile_json(self, dfparser):
-        dfparser.content = """\
-# comment
-From  base
-LABEL foo="bar baz"
-USER  {0}""".format(NON_ASCII)
+        dfparser.content = dedent("""\
+            # comment
+            From  base
+            LABEL foo="bar baz"
+            USER  {0}""").format(NON_ASCII)
         expected = json.dumps([{"FROM": "base"},
                                {"LABEL": "foo=\"bar baz\""},
                                {"USER": "{0}".format(NON_ASCII)}])
@@ -161,7 +162,7 @@ USER  {0}""".format(NON_ASCII)
         dfparser.content = ""
         lines = []
         i = instruction
-        lines.insert(-1, '{0} "name1"=\'value 1\' "name2"=myself name3="" name4\n'.format(i))
+        lines.insert(-1, '{0} "name1"=\'value 1\' "name2"=myself name3=""\n'.format(i))
         lines.insert(-1, '{0} name5=5\n'.format(i))
         lines.insert(-1, '{0} "name6"=6\n'.format(i))
         lines.insert(-1, '{0} name7\n'.format(i))
@@ -171,6 +172,7 @@ USER  {0}""".format(NON_ASCII)
         lines.insert(-1, '{0} "name1 1"=1\n'.format(i))
         lines.insert(-1, '{0} "name12"=12 \ \n   "name13"=13\n'.format(i))
         lines.insert(-1, '{0} name14=1\ 4\n'.format(i))
+        lines.insert(-1, '{0} name15="with = in value"\n'.format(i))
         # old syntax (without =)
         lines.insert(-1, '{0} name101 101\n'.format(i))
         lines.insert(-1, '{0} name102 1 02\n'.format(i))
@@ -179,16 +181,16 @@ USER  {0}""".format(NON_ASCII)
         lines.insert(-1, '{0} name105 1 \'05\'\n'.format(i))
         lines.insert(-1, '{0} name106 1 \'0\'   6\n'.format(i))
         lines.insert(-1, '{0} name107 1 0\ 7\n'.format(i))
+        lines.insert(-1, '{0} name108 "with = in value"\n'.format(i))
         dfparser.lines = lines
         if instruction == 'LABEL':
             instructions = dfparser.labels
         elif instruction == 'ENV':
             instructions = dfparser.envs
-        assert len(instructions) == 21
+        assert len(instructions) == 22
         assert instructions.get('name1') == 'value 1'
         assert instructions.get('name2') == 'myself'
         assert instructions.get('name3') == ''
-        assert instructions.get('name4') == ''
         assert instructions.get('name5') == '5'
         assert instructions.get('name6') == '6'
         assert instructions.get('name7') == ''
@@ -199,6 +201,7 @@ USER  {0}""".format(NON_ASCII)
         assert instructions.get('name12') == '12'
         assert instructions.get('name13') == '13'
         assert instructions.get('name14') == '1 4'
+        assert instructions.get('name15') == 'with = in value'
         assert instructions.get('name101') == '101'
         assert instructions.get('name102') == '1 02'
         assert instructions.get('name103') == '1 03'
@@ -206,13 +209,14 @@ USER  {0}""".format(NON_ASCII)
         assert instructions.get('name105') == '1 05'
         assert instructions.get('name106') == '1 0   6'
         assert instructions.get('name107') == '1 0 7'
+        assert instructions.get('name108') == 'with = in value'
 
     def test_modify_instruction(self, dfparser):
         FROM = ('ubuntu', 'fedora:latest')
         CMD = ('old cmd', 'new command')
-        df_content = """\
-FROM {0}
-CMD {1}""".format(FROM[0], CMD[0])
+        df_content = dedent("""\
+            FROM {0}
+            CMD {1}""").format(FROM[0], CMD[0])
 
         dfparser.content = df_content
 
@@ -225,13 +229,13 @@ CMD {1}""".format(FROM[0], CMD[0])
         assert dfparser.cmd == CMD[1]
 
     def test_add_del_instruction(self, dfparser):
-        df_content = """\
-CMD xyz
-LABEL a=b c=d
-LABEL x=\"y z\"
-ENV h i
-ENV j='k' l=m
-"""
+        df_content = dedent("""\
+            CMD xyz
+            LABEL a=b c=d
+            LABEL x=\"y z\"
+            ENV h i
+            ENV j='k' l=m
+            """)
         dfparser.content = df_content
 
         dfparser._add_instruction('FROM', 'fedora')
@@ -390,14 +394,14 @@ ENV j='k' l=m
         ('Version=1.1', 'Version', '2.1', 'Version=2.1'),
     ])
     def test_setter_direct(self, dfparser, instruction, old_instructions, key, new_value, expected):
-        df_content = """\
-FROM xyz
-LABEL a b
-LABEL x=\"y z\"
-ENV c d
-ENV e=\"f g\"
-{0} {1}
-""".format(instruction, old_instructions)
+        df_content = dedent("""\
+            FROM xyz
+            LABEL a b
+            LABEL x=\"y z\"
+            ENV c d
+            ENV e=\"f g\"
+            {0} {1}
+            """).format(instruction, old_instructions)
 
         dfparser.content = df_content
         if instruction == 'LABEL':
@@ -500,3 +504,177 @@ ENV e=\"f g\"
     def test_nonseekable_fileobj(self):
         with pytest.raises(AttributeError):
             DockerfileParser(fileobj=sys.stdin)
+
+    @pytest.mark.parametrize('instruction', [
+        'LABEL',
+        'ENV'
+    ])
+    def test_context_structure_per_line(self, dfparser, instruction):
+        dfparser.content = dedent("""
+            FROM fedora:25
+
+            {0} multi.label1="value1" \
+                  multi.label2="value2" \
+                  other="value3"
+
+            {0} 2multi.label1="othervalue1" 2multi.label2="othervalue2" other="othervalue3"
+
+            {0} "com.example.vendor"="ACME Incorporated"
+            {0} com.example.label-with-value="foo"
+            {0} version="1.0"
+            {0} description="This text illustrates \ 
+            that label-values can span multiple lines."
+            {0} key="with = in the value"
+            """).format(instruction)
+
+        c = dfparser.context_structure
+
+        assert c[1].get_line_value(context_type=instruction) == {
+            "multi.label1": "value1",
+            "multi.label2": "value2",
+            "other": "value3"
+        }
+
+        assert c[2].get_line_value(context_type=instruction) == {
+            "2multi.label1": "othervalue1",
+            "2multi.label2": "othervalue2",
+            "other": "othervalue3"
+        }
+
+        assert c[3].get_line_value(context_type=instruction) == {
+            "com.example.vendor": "ACME Incorporated"
+        }
+
+        assert c[4].get_line_value(context_type=instruction) == {
+            "com.example.label-with-value": "foo"
+        }
+
+        assert c[5].get_line_value(context_type=instruction) == {
+            "version": "1.0"
+        }
+
+        assert c[6].get_line_value(context_type=instruction) == {
+            "description": "This text illustrates that label-values can span multiple lines."
+        }
+
+        assert c[7].get_line_value(context_type=instruction) == {
+            "key": "with = in the value"
+        }
+
+    @pytest.mark.parametrize('instruction', [
+        'LABEL',
+        'ENV'
+    ])
+    def test_context_structure(self, dfparser, instruction):
+        dfparser.content = dedent("""
+            FROM fedora:25
+
+            {0} multi.label1="value1" \
+                  multi.label2="value2" \
+                  other="value3"
+
+            {0} 2multi.label1="othervalue1" 2multi.label2="othervalue2" other="othervalue3"
+
+            {0} "com.example.vendor"="ACME Incorporated"
+            {0} com.example.label-with-value="foo"
+            {0} version="1.0"
+            {0} description="This text illustrates \ 
+            that label-values can span multiple lines."
+            """).format(instruction)
+
+        c = dfparser.context_structure
+
+        assert c[1].get_values(context_type=instruction) == {
+            "multi.label1": "value1",
+            "multi.label2": "value2",
+            "other": "value3"
+        }
+
+        assert c[2].get_values(context_type=instruction) == {
+            "multi.label1": "value1",
+            "multi.label2": "value2",
+            "other": "othervalue3",
+            "2multi.label1": "othervalue1",
+            "2multi.label2": "othervalue2"
+        }
+
+        assert c[3].get_values(context_type=instruction) == {
+            "multi.label1": "value1",
+            "multi.label2": "value2",
+            "other": "othervalue3",
+            "2multi.label1": "othervalue1",
+            "2multi.label2": "othervalue2",
+            "com.example.vendor": "ACME Incorporated"
+        }
+
+        assert c[4].get_values(context_type=instruction) == {
+            "multi.label1": "value1",
+            "multi.label2": "value2",
+            "other": "othervalue3",
+            "2multi.label1": "othervalue1",
+            "2multi.label2": "othervalue2",
+            "com.example.vendor": "ACME Incorporated",
+            "com.example.label-with-value": "foo"
+        }
+
+        assert c[5].get_values(context_type=instruction) == {
+            "multi.label1": "value1",
+            "multi.label2": "value2",
+            "other": "othervalue3",
+            "2multi.label1": "othervalue1",
+            "2multi.label2": "othervalue2",
+            "com.example.vendor": "ACME Incorporated",
+            "com.example.label-with-value": "foo",
+            "version": "1.0"
+        }
+
+        assert c[6].get_values(context_type=instruction) == {"multi.label1": "value1",
+                                                             "multi.label2": "value2",
+                                                             "other": "othervalue3",
+                                                             "2multi.label1": "othervalue1",
+                                                             "2multi.label2": "othervalue2",
+                                                             "com.example.vendor": "ACME Incorporated",
+                                                             "com.example.label-with-value": "foo",
+                                                             "version": "1.0",
+                                                             "description": "This text illustrates that label-values can span multiple lines."
+                                                             }
+
+    @pytest.mark.parametrize('instruction', [
+        'LABEL',
+        'ENV'
+    ])
+    def test_context_structure_mixed(self, dfparser, instruction):
+        dfparser.content = dedent("""
+            FROM fedora:25
+
+            {0} key=value
+            RUN touch /tmp/a
+            {0} key2=value2""").format(instruction)
+
+        c = dfparser.context_structure
+        assert c[0].get_values(context_type=instruction) == {}
+        assert c[1].get_values(context_type=instruction) == {"key": "value"}
+        assert c[2].get_values(context_type=instruction) == {"key": "value"}
+        assert c[3].get_values(context_type=instruction) == {"key": "value",
+                                                             "key2": "value2"}
+
+    def test_context_structure_mixed_env_label(self, dfparser):
+        dfparser.content = dedent("""
+            FROM fedora:25
+
+            ENV key=value
+            RUN touch /tmp/a
+            LABEL key2=value2""")
+        c = dfparser.context_structure
+
+        assert c[0].get_values(context_type="ENV") == {}
+        assert c[0].get_values(context_type="LABEL") == {}
+
+        assert c[1].get_values(context_type="ENV") == {"key": "value"}
+        assert c[1].get_values(context_type="LABEL") == {}
+
+        assert c[2].get_values(context_type="ENV") == {"key": "value"}
+        assert c[2].get_values(context_type="LABEL") == {}
+
+        assert c[3].get_values(context_type="ENV") == {"key": "value"}
+        assert c[3].get_values(context_type="LABEL") == {"key2": "value2"}
