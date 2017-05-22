@@ -8,4 +8,4 @@ of the BSD license. See the LICENSE file for details.
 
 from .parser import DockerfileParser
 
-__version__ = "0.0.6"
+__version__ = "0.0.7"
