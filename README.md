@@ -8,6 +8,13 @@ Python library for parsing Dockerfile files.
 
 ## Installation
 
+### from PyPI
+
+```
+$ pip install dockerfile-parse
+```
+
+
 ### from git
 
 Clone this git repo and install dockerfile-parse using python installer:
