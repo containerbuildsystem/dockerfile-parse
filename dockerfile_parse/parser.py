@@ -173,11 +173,15 @@ class DockerfileParser(object):
             return self.cached_content
 
         try:
-            with self._open_dockerfile('r') as dockerfile:
-                content = b2u(dockerfile.read())
-                if self.cache_content:
-                    self.cached_content = content
-                return content
+            if self.cache_content:
+                self.cached_content = ''.join(self.cache_content)
+                return self.cached_content
+            else:
+                with self._open_dockerfile('r') as dockerfile:
+                    content = b2u(dockerfile.read())
+                    if self.cache_content:
+                        self.cached_content = content
+                    return content
         except (IOError, OSError) as ex:
             logger.error("Couldn't retrieve content of dockerfile: %r", ex)
             raise
