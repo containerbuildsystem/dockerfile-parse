@@ -17,14 +17,16 @@ from .constants import PY2
 
 def b2u(string):
     """ bytes to unicode """
-    if isinstance(string, bytes):
+    if (isinstance(string, bytes) or
+        (PY2 and isinstance(string, str))):
         return string.decode('utf-8')
     return string
 
 
 def u2b(string):
-    """ unicode to bytes (Python 2 only) """
-    if PY2 and isinstance(string, unicode):
+    """ unicode to bytes"""
+    if ((PY2 and isinstance(string, unicode)) or
+        ((not PY2) and isinstance(string, str))):
         return string.encode('utf-8')
     return string
 

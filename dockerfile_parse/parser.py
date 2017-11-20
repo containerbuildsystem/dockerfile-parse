@@ -122,7 +122,7 @@ class DockerfileParser(object):
     def _open_dockerfile(self, mode):
         if self.fileobj is not None:
             self.fileobj.seek(0)
-            if mode == 'w':
+            if 'w' in mode:
                 self.fileobj.truncate()
             yield self.fileobj
             self.fileobj.seek(0)
@@ -139,7 +139,7 @@ class DockerfileParser(object):
             return self.cached_content.splitlines(True)
 
         try:
-            with self._open_dockerfile('r') as dockerfile:
+            with self._open_dockerfile('rb') as dockerfile:
                 lines = [b2u(l) for l in dockerfile.readlines()]
                 if self.cache_content:
                     self.cached_content = ''.join(lines)
@@ -158,7 +158,7 @@ class DockerfileParser(object):
             self.cached_content = ''.join([b2u(l) for l in lines])
 
         try:
-            with self._open_dockerfile('w') as dockerfile:
+            with self._open_dockerfile('wb') as dockerfile:
                 dockerfile.writelines([u2b(l) for l in lines])
         except (IOError, OSError) as ex:
             logger.error("Couldn't write lines to dockerfile: %r", ex)
@@ -173,7 +173,7 @@ class DockerfileParser(object):
             return self.cached_content
 
         try:
-            with self._open_dockerfile('r') as dockerfile:
+            with self._open_dockerfile('rb') as dockerfile:
                 content = b2u(dockerfile.read())
                 if self.cache_content:
                     self.cached_content = content
@@ -192,7 +192,7 @@ class DockerfileParser(object):
             self.cached_content = b2u(content)
 
         try:
-            with self._open_dockerfile('w') as dockerfile:
+            with self._open_dockerfile('wb') as dockerfile:
                 dockerfile.write(u2b(content))
         except (IOError, OSError) as ex:
             logger.error("Couldn't write content to dockerfile: %r", ex)
