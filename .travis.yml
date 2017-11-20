@@ -1,22 +1,36 @@
 language: python
-matrix:
-  include:
-    - python: "2.6"
-      env: TOXENV=py26
-    - python: "2.7"
-      env: TOXENV=py27
-    - python: "3.4"
-      env: TOXENV=py34
-    - python: "3.5"
-      env: TOXENV=py35
-# command to install dependencies
-install:
-  - "pip install tox"
-  - "pip install coveralls"
-# command to run tests
-script: tox
-# run in a docker container
-sudo: false
+sudo: "required"
+services:
+  - docker
+env:
+  matrix:
+    - OS=centos
+      OS_VERSION=6
+      PYTHON_VERSION=2
+    - OS=centos
+      OS_VERSION=7
+      PYTHON_VERSION=2
+    - OS=fedora
+      OS_VERSION=25
+      PYTHON_VERSION=2
+    - OS=fedora
+      OS_VERSION=25
+      PYTHON_VERSION=3
+    - OS=fedora
+      OS_VERSION=26
+      PYTHON_VERSION=2
+    - OS=fedora
+      OS_VERSION=26
+      PYTHON_VERSION=3
+    - OS=fedora
+      OS_VERSION=rawhide
+      PYTHON_VERSION=2
+    - OS=fedora
+      OS_VERSION=rawhide
+      PYTHON_VERSION=3
+script:
+ - pip install coveralls
+ - ./test.sh
+after_success: coveralls
 notifications:
   email: false
-after_success: "coveralls"
