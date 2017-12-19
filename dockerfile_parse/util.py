@@ -95,31 +95,36 @@ class EnvSubst(object):
                 continue
 
             if ch == '$' and self.quotes != self.SQUOTE:
-                # Substitute environment variable
-                braced = False
-                varname = ''
                 while True:
-                    ch = self.stream.read(1)
-                    if varname == '' and ch == '{':
-                        braced = True
-                        continue
+                    # Substitute environment variable
+                    braced = False
+                    varname = ''
+                    while True:
+                        ch = self.stream.read(1)
+                        if varname == '' and ch == '{':
+                            braced = True
+                            continue
 
-                    if not ch:
-                        # EOF
+                        if not ch:
+                            # EOF
+                            break
+
+                        if braced and ch == '}':
+                            break
+
+                        if not ch.isalnum() and ch != '_':
+                            break
+
+                        varname += ch
+
+                    try:
+                        yield self.envs[varname]
+                    except KeyError:
+                        pass
+
+                    # Check whether there is another envvar
+                    if ch != '$':
                         break
-
-                    if braced and ch == '}':
-                        break
-
-                    if not ch.isalnum() and ch != '_':
-                        break
-
-                    varname += ch
-
-                try:
-                    yield self.envs[varname]
-                except KeyError:
-                    pass
 
                 if braced and ch == '}':
                     continue
