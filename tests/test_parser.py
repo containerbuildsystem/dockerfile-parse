@@ -686,3 +686,11 @@ class TestDockerfileParser(object):
 
         assert c[3].get_values(context_type="ENV") == {"key": "value"}
         assert c[3].get_values(context_type="LABEL") == {"key2": "value2"}
+
+    def test_expand_concatenated_variables(self, dfparser):
+        dfparser.content = dedent("""
+            FROM scratch
+            ENV NAME=name VER=1
+            LABEL component="$NAME$VER"
+        """)
+        assert dfparser.labels['component'] == 'name1'
