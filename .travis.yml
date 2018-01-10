@@ -22,12 +22,6 @@ env:
     - OS=fedora
       OS_VERSION=27
       PYTHON_VERSION=3
-    - OS=fedora
-      OS_VERSION=rawhide
-      PYTHON_VERSION=2
-    - OS=fedora
-      OS_VERSION=rawhide
-      PYTHON_VERSION=3
 script:
  - pip install coveralls
  - ./test.sh
