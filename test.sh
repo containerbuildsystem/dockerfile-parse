@@ -31,7 +31,7 @@ else
 fi
 # Create container if needed
 if [[ $(docker ps -q -f name=$CONTAINER_NAME | wc -l) -eq 0 ]]; then
-  docker run --name $CONTAINER_NAME -d -v $PWD:$PWD -w $PWD -ti $IMAGE sleep infinity
+  docker run --name $CONTAINER_NAME -d -v $PWD:$PWD:z -w $PWD -ti $IMAGE sleep infinity
 fi
 
 # Install dependencies
