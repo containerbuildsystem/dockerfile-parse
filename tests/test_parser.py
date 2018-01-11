@@ -236,6 +236,27 @@ class TestDockerfileParser(object):
         dfparser.cmd = CMD[1]
         assert dfparser.cmd == CMD[1]
 
+    def test_modify_from_multistage(self, dfparser):
+        FROM = ('base:${CODE_VERSION}', 'extras:${CODE_VERSION}')
+        CMD = ('/code/run-app', '/code/run-extras')
+        df_content = dedent("""\
+ARG  CODE_VERSION=latest
+FROM {0}
+CMD  {1}
+
+FROM {2}
+CMD  {3}""").format(FROM[0], CMD[0], FROM[1], CMD[1])
+
+        dfparser.content = df_content
+
+        assert dfparser.baseimage == FROM[0]
+        dfparser.baseimage = FROM[1]
+        assert dfparser.baseimage == FROM[1]
+
+        assert dfparser.cmd == CMD[1]
+        dfparser.cmd = CMD[0]
+        assert dfparser.cmd == CMD[0]
+
     def test_add_del_instruction(self, dfparser):
         df_content = dedent("""\
             CMD xyz
