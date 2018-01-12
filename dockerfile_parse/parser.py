@@ -494,7 +494,7 @@ class DockerfileParser(object):
                 del lines[insn['startline']:insn['endline'] + 1]
                 lines.insert(insn['startline'], new_line)
                 self.lines = lines
-                if insn['instruction'] == 'FROM':  # Only overwrite first base-image
+                if instruction == 'FROM':  # Only overwrite first base-image
                     return
 
     def _delete_instructions(self, instruction, value=None):
