@@ -570,8 +570,8 @@ class TestDockerfileParser(object):
         dfparser.content = dedent("""
             FROM fedora:25
 
-            {0} multi.label1="value1" \
-                  multi.label2="value2" \
+            {0} multi.label1="value1" \\
+                  multi.label2="value2" \\
                   other="value3"
 
             {0} 2multi.label1="othervalue1" 2multi.label2="othervalue2" other="othervalue3"
@@ -579,7 +579,7 @@ class TestDockerfileParser(object):
             {0} "com.example.vendor"="ACME Incorporated"
             {0} com.example.label-with-value="foo"
             {0} version="1.0"
-            {0} description="This text illustrates \ 
+            {0} description="This text illustrates \\
             that label-values can span multiple lines."
             {0} key="with = in the value"
             """).format(instruction)
@@ -626,8 +626,8 @@ class TestDockerfileParser(object):
         dfparser.content = dedent("""
             FROM fedora:25
 
-            {0} multi.label1="value1" \
-                  multi.label2="value2" \
+            {0} multi.label1="value1" \\
+                  multi.label2="value2" \\
                   other="value3"
 
             {0} 2multi.label1="othervalue1" 2multi.label2="othervalue2" other="othervalue3"
@@ -635,7 +635,7 @@ class TestDockerfileParser(object):
             {0} "com.example.vendor"="ACME Incorporated"
             {0} com.example.label-with-value="foo"
             {0} version="1.0"
-            {0} description="This text illustrates \ 
+            {0} description="This text illustrates \\
             that label-values can span multiple lines."
             """).format(instruction)
 
