@@ -567,7 +567,7 @@ class TestDockerfileParser(object):
         'ENV'
     ])
     def test_context_structure_per_line(self, dfparser, instruction):
-        dfparser.content = dedent("""
+        dfparser.content = dedent("""\
             FROM fedora:25
 
             {0} multi.label1="value1" \\
@@ -623,7 +623,7 @@ class TestDockerfileParser(object):
         'ENV'
     ])
     def test_context_structure(self, dfparser, instruction):
-        dfparser.content = dedent("""
+        dfparser.content = dedent("""\
             FROM fedora:25
 
             {0} multi.label1="value1" \\
@@ -701,7 +701,7 @@ class TestDockerfileParser(object):
         'ENV'
     ])
     def test_context_structure_mixed(self, dfparser, instruction):
-        dfparser.content = dedent("""
+        dfparser.content = dedent("""\
             FROM fedora:25
 
             {0} key=value
@@ -716,7 +716,7 @@ class TestDockerfileParser(object):
                                                              "key2": "value2"}
 
     def test_context_structure_mixed_env_label(self, dfparser):
-        dfparser.content = dedent("""
+        dfparser.content = dedent("""\
             FROM fedora:25
 
             ENV key=value
@@ -737,7 +737,7 @@ class TestDockerfileParser(object):
         assert c[3].get_values(context_type="LABEL") == {"key2": "value2"}
 
     def test_expand_concatenated_variables(self, dfparser):
-        dfparser.content = dedent("""
+        dfparser.content = dedent("""\
             FROM scratch
             ENV NAME=name VER=1
             LABEL component="$NAME$VER"
