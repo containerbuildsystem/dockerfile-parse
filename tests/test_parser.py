@@ -238,25 +238,53 @@ class TestDockerfileParser(object):
         assert dfparser.cmd == CMD[1]
 
     def test_modify_from_multistage(self, dfparser):
-        FROM = ('base:${CODE_VERSION}', 'extras:${CODE_VERSION}')
-        CMD = ('/code/run-app', '/code/run-extras')
-        df_content = dedent("""\
-ARG  CODE_VERSION=latest
-FROM {0}
-CMD  {1}
+        BASE_FROM = 'base:${CODE_VERSION}'
+        STAGED_FROM = 'extras:${CODE_VERSION}'
+        UPDATED_BASE_FROM = 'bass:${CODE_VERSION}'
 
-FROM {2}
-CMD  {3}""").format(FROM[0], CMD[0], FROM[1], CMD[1])
+        BASE_CMD = '/code/run-app'
+        STAGED_CMD = '/code/run-extras'
+        UPDATED_STAGED_CMD = '/code/run-main-actors'
+
+        df_content = dedent("""\
+            ARG  CODE_VERSION=latest
+            FROM {0}
+            CMD {1}
+
+            FROM {2}
+            CMD {3}""").format(BASE_FROM, BASE_CMD, STAGED_FROM, STAGED_CMD)
+
+        INDEX_FIRST_FROM = 1
+        INDEX_SECOND_FROM = 4
+
+        INDEX_FIRST_CMD = 2
+        INDEX_SECOND_CMD = 5
 
         dfparser.content = df_content
 
-        assert dfparser.baseimage == FROM[0]
-        dfparser.baseimage = FROM[1]
-        assert dfparser.baseimage == FROM[1]
+        assert dfparser.baseimage == BASE_FROM
+        assert dfparser.lines[INDEX_FIRST_FROM].strip() == 'FROM {0}'.format(BASE_FROM)
+        assert dfparser.lines[INDEX_SECOND_FROM].strip() == 'FROM {0}'.format(STAGED_FROM)
 
-        assert dfparser.cmd == CMD[1]
-        dfparser.cmd = CMD[0]
-        assert dfparser.cmd == CMD[0]
+        assert dfparser.cmd == STAGED_CMD  # Last command overrides base command
+        assert dfparser.lines[INDEX_FIRST_CMD].strip() == 'CMD {0}'.format(BASE_CMD)
+        assert dfparser.lines[INDEX_SECOND_CMD].strip() == 'CMD {0}'.format(STAGED_CMD)
+
+        dfparser.baseimage = UPDATED_BASE_FROM
+        assert dfparser.baseimage == UPDATED_BASE_FROM
+        assert dfparser.lines[INDEX_FIRST_FROM].strip() == 'FROM {0}'.format(UPDATED_BASE_FROM)
+        assert dfparser.lines[INDEX_SECOND_FROM].strip() == 'FROM {0}'.format(STAGED_FROM)
+
+        assert dfparser.cmd == STAGED_CMD  # Last command overrides base command
+        assert dfparser.lines[INDEX_FIRST_CMD].strip() == 'CMD {0}'.format(BASE_CMD)
+        assert dfparser.lines[INDEX_SECOND_CMD].strip() == 'CMD {0}'.format(STAGED_CMD)
+
+        # Unlike FROM, updates to CMD should update all instructions. Might need
+        # revisiting for additional support of multistage builds.
+        dfparser.cmd = UPDATED_STAGED_CMD
+        assert dfparser.cmd == UPDATED_STAGED_CMD
+        assert dfparser.lines[INDEX_FIRST_CMD].strip() == 'CMD {0}'.format(UPDATED_STAGED_CMD)
+        assert dfparser.lines[INDEX_SECOND_CMD].strip() == 'CMD {0}'.format(UPDATED_STAGED_CMD)
 
     def test_add_del_instruction(self, dfparser):
         df_content = dedent("""\
