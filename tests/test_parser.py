@@ -64,7 +64,8 @@ class TestDockerfileParser(object):
         assert dfparser.lines == df_lines
         assert [isinstance(line, six.text_type) for line in dfparser.lines]
 
-        tmpdir.join('Dockerfile').write_text(df_content, 'utf-8')
+        with open(os.path.join(str(tmpdir), 'Dockerfile'), 'wb') as fp:
+            fp.write(df_content.encode('utf-8'))
         dfparser = DockerfileParser(str(tmpdir))
         assert dfparser.content == df_content
         assert dfparser.lines == df_lines
