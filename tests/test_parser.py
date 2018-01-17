@@ -513,10 +513,6 @@ class TestDockerfileParser(object):
         with pytest.raises(AttributeError):
             DockerfileParser(fileobj=sys.stdin)
 
-    @pytest.mark.parametrize('instruction', [
-        'LABEL',
-        'ENV'
-    ])
     def test_context_structure_per_line(self, dfparser, instruction):
         dfparser.content = dedent("""
             FROM fedora:25
@@ -569,10 +565,6 @@ class TestDockerfileParser(object):
             "key": "with = in the value"
         }
 
-    @pytest.mark.parametrize('instruction', [
-        'LABEL',
-        'ENV'
-    ])
     def test_context_structure(self, dfparser, instruction):
         dfparser.content = dedent("""
             FROM fedora:25
@@ -647,10 +639,6 @@ class TestDockerfileParser(object):
                                                              "description": "This text illustrates that label-values can span multiple lines."
                                                              }
 
-    @pytest.mark.parametrize('instruction', [
-        'LABEL',
-        'ENV'
-    ])
     def test_context_structure_mixed(self, dfparser, instruction):
         dfparser.content = dedent("""
             FROM fedora:25
