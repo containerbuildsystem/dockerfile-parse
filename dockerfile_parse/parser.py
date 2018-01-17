@@ -341,12 +341,16 @@ class DockerfileParser(object):
                 key_val_list = extract_labels_or_envs(env_replace=env_replace,
                                                       envs=envs,
                                                       instruction_value=instruction_desc['value'])
-                for key, value in key_val_list:
-                    if this_instruction == name:
-                        instructions[key] = value
-                        logger.debug("new %s %r=%r", name.lower(), key, value)
-                    if this_instruction == 'ENV':
-                        envs[key] = value
+                try:
+                    for key, value in key_val_list:
+                        if this_instruction == name:
+                            instructions[key] = value
+                            logger.debug("new %s %r=%r", name.lower(), key, value)
+                        if this_instruction == 'ENV':
+                            envs[key] = value
+                except KeyError:
+                    # In case we detect key_val_list like [(a,b), None, None,(c,d)]
+                    pass
 
         logger.debug("instructions: %r", instructions)
         return Labels(instructions, self) if name == 'LABEL' else Envs(instructions, self)
