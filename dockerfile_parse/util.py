@@ -225,9 +225,15 @@ def extract_labels_or_envs(env_replace, envs, instruction_value):
         key_val_list.append((key, val))
 
     else:  # LABEL/ENV "name"="value"
-
+        last_item = ""
         for k_v in shlex_splits_raw:
-            key_val_list.append(split_tuple(k_v))
+            if '=' not in k_v:
+                last_item += " " + k_v
+            else:
+                if last_item:
+                    key_val_list.append(split_tuple(last_item))
+                last_item = k_v
+        key_val_list.append(split_tuple(last_item))
 
     return key_val_list
 

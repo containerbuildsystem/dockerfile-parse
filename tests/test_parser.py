@@ -732,3 +732,41 @@ class TestDockerfileParser(object):
             LABEL component="$NAME$VER"
         """)
         assert dfparser.labels['component'] == 'name1'
+
+    def test_multiline(self, dfparser):
+        dfparser.content = dedent("""
+            LABEL a=b c d e \
+                  b="parsing is so hard" \
+                  c=y e s
+        """)
+        assert dfparser.labels == {
+            "a": "b c d e",
+            "b": "parsing is so hard",
+            "c": "y e s"
+        }
+
+    def test_multiline2(self, dfparser):
+        dfparser.content = dedent("""
+            LABEL a="b c" \
+                  b=parsing is so hard \
+                  c="y e s"
+        """)
+        assert dfparser.labels == {
+            "a": "b c",
+            "b": "parsing is so hard",
+            "c": "y e s"
+        }
+
+    def test_multispace_label(self, dfparser):
+        # this fails with docker but succeeds with us b/c shlex.split eats consecutive spaces
+        dfparser.content = "LABEL a=b  c"
+        assert dfparser.labels == {"a": "b c"}
+
+    def test_broken_multiline_label(self, dfparser):
+        # once again, shlex.split is smarter than dockerd's parser
+        dfparser.content = dedent("""
+            LABEL a=b \
+                  c
+        """)
+        assert dfparser.labels == {"a": "b c"}
+
