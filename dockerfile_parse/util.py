@@ -31,18 +31,27 @@ def u2b(string):
     return string
 
 
-class EnvSubst(object):
+class WordSplitter(object):
     """
-    Substitute environment variables when quoting allows
+    Split string into words, substituting environment variables if provided
+
+    Methods defined here:
+
+    dequote()
+        Returns the string with escaped and quotes consumed
+
+    split(maxsplit=None, dequote=True)
+        Returns an iterable of words, split at whitespace
     """
 
     SQUOTE = "'"
     DQUOTE = '"'
 
-    def __init__(self, s, envs):
+    def __init__(self, s, envs=None):
         """
-        :param s: str, string to perform substitution on
-        :param envs: dict, environment variables to use
+        :param s: str, string to process
+        :param envs: dict, environment variables to use; if None, do not
+            attempt substitution
         """
         self.stream = StringIO(s)
         self.envs = envs
@@ -51,50 +60,93 @@ class EnvSubst(object):
         self.quotes = None  # the quoting character in force, or None
         self.escaped = False
 
-    def substitute(self):
-        """
-        :return: str, string resulting from substitution
-        """
-        return "".join(self.replace_parts())
-
-    def update_quoting_state(self, ch):
+    def _update_quoting_state(self, ch):
         """
         Update self.quotes and self.escaped
 
-        :param ch: str, next character
+        :param ch: str, current character
+        :return: ch if it was not used to update quoting state, else ''
         """
 
         # Set whether the next character is escaped
-        self.escaped = ch == '\\' and self.quotes != self.SQUOTE
+        # Unquoted:
+        #   a backslash escapes the next character
+        # Double-quoted:
+        #   a backslash escapes the next character only if it is a double-quote
+        # Single-quoted:
+        #   a backslash is not special
+        is_escaped = self.escaped
+        self.escaped = (not self.escaped and
+                        ch == '\\' and
+                        self.quotes != self.SQUOTE)
         if self.escaped:
-            return
+            return ''
+
+        if is_escaped:
+            if self.quotes == self.DQUOTE:
+                if ch == '"':
+                    return ch
+                return "{0}{1}".format('\\', ch)
+
+            return ch
 
         if self.quotes is None:
             if ch in (self.SQUOTE, self.DQUOTE):
                 self.quotes = ch
+                return ''
 
         elif self.quotes == ch:
             self.quotes = None
+            return ''
 
-    def replace_parts(self):
+        return ch
+
+    def dequote(self):
+        return ''.join(self.split(maxsplit=0))
+
+    def split(self, maxsplit=None, dequote=True):
         """
-        Generator for substituted parts of the string to be reassembled.
+        Generator for the words of the string
+
+        :param maxsplit: perform at most maxsplit splits;
+            if None, do not limit the number of splits
+        :param dequote: remove quotes and escape characters once consumed
         """
+
+        class Word(object):
+            """
+            A None-or-str object which can always be appended to.
+            Similar to a defaultdict but with only a single value.
+            """
+
+            def __init__(self):
+                self.value = None
+
+            @property
+            def valid(self):
+                return self.value is not None
+
+            def append(self, s):
+                if self.value is None:
+                    self.value = s
+                else:
+                    self.value += s
+
+        num_splits = 0
+        word = Word()
         while True:
             ch = self.stream.read(1)
             if not ch:
                 # EOF
-                raise StopIteration
+                if word.valid:
+                    yield word.value
 
-            if self.escaped:
-                # This character was escaped
-                yield ch
+                return
 
-                # Reset back to not being escaped
-                self.escaped = False
-                continue
-
-            if ch == '$' and self.quotes != self.SQUOTE:
+            if (not self.escaped and
+                    self.envs is not None and
+                    ch == '$' and
+                    self.quotes != self.SQUOTE):
                 while True:
                     # Substitute environment variable
                     braced = False
@@ -118,7 +170,7 @@ class EnvSubst(object):
                         varname += ch
 
                     try:
-                        yield self.envs[varname]
+                        word.append(self.envs[varname])
                     except KeyError:
                         pass
 
@@ -131,103 +183,64 @@ class EnvSubst(object):
 
                 # ch now holds the next character
 
-            # This character is not special, yield it
-            yield ch
+            # Figure out what our quoting/escaping state will be
+            # after this character
+            is_escaped = self.escaped
+            ch_unless_consumed = self._update_quoting_state(ch)
 
-            self.update_quoting_state(ch)
+            if dequote:
+                # If we just processed a quote or escape character,
+                # and were asked to dequote the string, consume it now
+                ch = ch_unless_consumed
 
+            # If word-splitting has been requested, check whether we are
+            # at a whitespace character
+            may_split = maxsplit != 0 and (maxsplit is None or
+                                           num_splits < maxsplit)
+            at_split = may_split and (self.quotes is None and
+                                      not is_escaped and
+                                      ch.isspace())
+            if at_split:
+                # It is time to yield a word
+                if word.valid:
+                    num_splits += 1
+                    yield word.value
 
-def shlex_split(string, env_replace=True, envs=None):
-    """
-    Split the string, applying environment variable substitutions
-
-    Python2's shlex doesn't like unicode, so we have to convert the string
-    into bytes, run shlex.split() and convert it back to unicode.
-
-    This applies environment variable substitutions on the string when
-    quoting allows, and splits it into tokens at whitespace
-    delimiters.
-
-    Environment variable substitution is applied to the entire string,
-    even the part before any '=', which is not technically correct but
-    will only fail for invalid Dockerfile content.
-
-    :param string: str, string to split
-    :param env_replace: bool, whether to perform substitution
-    :param envs: dict, environment variables for substitution
-
-    """
-    if env_replace:
-        string = EnvSubst(string, envs or {}).substitute()
-
-    if PY2 and isinstance(string, unicode):
-        string = u2b(string)
-        # this takes care of quotes
-        splits = shlex.split(string)
-        return map(b2u, splits)
-    else:
-        return shlex.split(string)
-
-
-def strip_quotes(string):
-    """ strip first and last (double) quotes"""
-    if string.startswith('"') and string.endswith('"'):
-        return string[1:-1]
-    if string.startswith("'") and string.endswith("'"):
-        return string[1:-1]
-    return string
-
-
-def remove_quotes(string):
-    """ remove all (double) quotes"""
-    return string.replace("'", "").replace('"', '')
-
-
-def remove_nonescaped_quotes(string):
-    """
-    "' "   -> ' '
-    '" '   -> ' '
-    '\ '  -> ' '
-    "\\' " -> "' "
-    '\\" ' -> '" '
-    """
-    string = string.replace("\\'", "\\s").replace('\\"', '\\d')  # backup
-    string = remove_quotes(string)
-    string = string.replace('\ ', ' ')
-    return string.replace("\\s", "'").replace('\\d', '"')  # restore
-
-
-def split_tuple(text):
-    text_split = text.split('=', 1)
-    if len(text_split) == 2:
-        return tuple(text_split)
-    return None
+                word = Word()
+            else:
+                word.append(ch)
 
 
 def extract_labels_or_envs(env_replace, envs, instruction_value):
-    shlex_splits_raw = shlex_split(instruction_value,
-                                   env_replace=env_replace, envs=envs)
-
+    words = list(WordSplitter(instruction_value).split(dequote=False))
     key_val_list = []
-    if '=' not in shlex_splits_raw[0]:  # LABEL/ENV name value
-        # split it to first (name) and the rest (value)
-        key_val = instruction_value.split(None, 1)
-        key = strip_quotes(key_val[0])
+
+    def substitute_vars(val):
+        kwargs = {}
+        if env_replace:
+            kwargs['envs'] = envs
+
+        return WordSplitter(val, **kwargs).dequote()
+
+    if '=' not in words[0]:
+        # This form is:
+        #   LABEL/ENV name value
+        # The first word is the name, remainder are the value.
+        key_val = [substitute_vars(x) for x in instruction_value.split(None, 1)]
+        key = key_val[0]
         try:
             val = key_val[1]
         except IndexError:
             val = ''
 
-        if env_replace:
-            val = EnvSubst(val, envs).substitute()
-        val = remove_nonescaped_quotes(val)
-
         key_val_list.append((key, val))
-
-    else:  # LABEL/ENV "name"="value"
-
-        for k_v in shlex_splits_raw:
-            key_val_list.append(split_tuple(k_v))
+    else:
+        # This form is:
+        #   LABEL/ENV "name"="value" ["name"="value"...]
+        # Each word is a key=value pair.
+        for k_v in words:
+            key, val = [substitute_vars(x) for x in k_v.split('=', 1)]
+            key_val_list.append((key, val))
 
     return key_val_list
 

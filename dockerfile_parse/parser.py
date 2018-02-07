@@ -17,7 +17,7 @@ from contextlib import contextmanager
 
 from .constants import DOCKERFILE_FILENAME
 from .util import (b2u, extract_labels_or_envs, get_key_val_dictionary,
-                   remove_quotes, shlex_split, u2b, Context)
+                   u2b, Context, WordSplitter)
 
 try:
     # py3
@@ -421,20 +421,19 @@ class DockerfileParser(object):
         content = startline = endline = None
         for candidate in [insn for insn in self.structure
                           if insn['instruction'] == instruction]:
-            splits = shlex_split(candidate['value'])
+            words = list(WordSplitter(candidate['value']).split(dequote=False))
 
             # LABEL/ENV syntax is one of two types:
-            if '=' not in splits[0]:  # LABEL/ENV name value
-                # remove (double-)quotes
-                value = remove_quotes(candidate['value'])
-                words = value.split(None, 1)
-                if words[0] == instr_key:
+            if '=' not in words[0]:  # LABEL/ENV name value
+                # Remove quotes from key name and see if it's the one
+                # we're looking for.
+                if WordSplitter(words[0]).dequote() == instr_key:
                     if instr_value is None:
                         # Delete this line altogether
                         content = None
                     else:
                         # Adjust label/env value
-                        words[1] = quote(instr_value)
+                        words[1:] = [quote(instr_value)]
 
                         # Now reconstruct the line
                         content = " ".join([instruction] + words) + '\n'
@@ -443,26 +442,23 @@ class DockerfileParser(object):
                     endline = candidate['endline']
                     break
             else:  # LABEL/ENV "name"="value"
-                for index, token in enumerate(splits):
-                    words = token.split("=", 1)
-                    if words[0] == instr_key:
+                for index, token in enumerate(words):
+                    key, _ = token.split("=", 1)
+                    if WordSplitter(key).dequote() == instr_key:
                         if instr_value is None:
                             # Delete this label
-                            del splits[index]
+                            del words[index]
                         else:
                             # Adjust label/env value
-                            words[1] = instr_value
-                            splits[index] = "=".join(words)
+                            words[index] = "{0}={1}".format(key,
+                                                            quote(instr_value))
 
-                        if len(splits) == 0:
+                        if len(words) == 0:
                             # We removed the last label/env, delete the whole line
                             content = None
                         else:
-                            instrs = [x.split('=', 1) for x in splits]
-                            quoted_instrs = ['='.join(map(quote, x))
-                                             for x in instrs]
                             # Now reconstruct the line
-                            content = " ".join([instruction] + quoted_instrs) + '\n'
+                            content = " ".join([instruction] + words) + '\n'
 
                         startline = candidate['startline']
                         endline = candidate['endline']
