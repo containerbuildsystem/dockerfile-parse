@@ -191,12 +191,13 @@ class TestDockerfileParser(object):
         lines.insert(-1, '{0} name106 1 \'0\'   6\n'.format(i))
         lines.insert(-1, '{0} name107 1 0\ 7\n'.format(i))
         lines.insert(-1, '{0} name108 "with = in value"\n'.format(i))
+        lines.insert(-1, '{0} name109 "\\"quoted\\""\n'.format(i))
         dfparser.lines = lines
         if instruction == 'LABEL':
             instructions = dfparser.labels
         elif instruction == 'ENV':
             instructions = dfparser.envs
-        assert len(instructions) == 22
+        assert len(instructions) == 23
         assert instructions.get('name1') == 'value 1'
         assert instructions.get('name2') == 'myself'
         assert instructions.get('name3') == ''
@@ -219,6 +220,7 @@ class TestDockerfileParser(object):
         assert instructions.get('name106') == '1 0   6'
         assert instructions.get('name107') == '1 0 7'
         assert instructions.get('name108') == 'with = in value'
+        assert instructions.get('name109') == '"quoted"'
 
     def test_modify_instruction(self, dfparser):
         FROM = ('ubuntu', 'fedora:latest')
@@ -475,6 +477,7 @@ class TestDockerfileParser(object):
             del dfparser.envs[key]
             assert not dfparser.labels.get(key)
 
+    @pytest.mark.parametrize('separator', [' ', '='])
     @pytest.mark.parametrize(('label', 'expected'), [
         # Expected substitutions
         ('$V', 'v'),
@@ -485,6 +488,7 @@ class TestDockerfileParser(object):
         ('${V}', 'v'),
         ('${V}-foo', 'v-foo'),
         ('$V-{foo}', 'v-{foo}'),
+        ('$VS', 'spam maps'),
 
         # These should not be substituted, only dequoted
         ("'$V'", "$V"),
@@ -497,12 +501,14 @@ class TestDockerfileParser(object):
         ('${}', ''),
         ("'\\'$V'\\'", "\\v\\"),
     ])
-    def test_env_replace(self, dfparser, label, expected):
+    def test_env_replace(self, dfparser, label, expected, separator):
         dfparser.lines = ["FROM fedora\n",
                           "ENV V=v\n",
-                          "LABEL TEST={0}\n".format(label)]
+                          "ENV VS='spam maps'\n",
+                          "LABEL TEST{0}{1}\n".format(separator, label)]
         assert dfparser.labels['TEST'] == expected
 
+    @pytest.mark.parametrize('separator', [' ', '='])
     @pytest.mark.parametrize(('label', 'expected'), [
         # These would have been substituted with env_replace=True
         ('$V', '$V'),
@@ -511,14 +517,14 @@ class TestDockerfileParser(object):
         ('"$V-foo"', '$V-foo'),
         ('"$V"-foo', '$V-foo'),
     ])
-    def test_env_noreplace(self, dfparser, label, expected):
+    def test_env_noreplace(self, dfparser, label, expected, separator):
         """
         Make sure environment replacement can be disabled.
         """
         dfparser.env_replace = False
         dfparser.lines = ["FROM fedora\n",
                           "ENV V=v\n",
-                          "LABEL TEST={0}\n".format(label)]
+                          "LABEL TEST{0}{1}\n".format(separator, label)]
         assert dfparser.labels['TEST'] == expected
 
     @pytest.mark.parametrize('label', [
@@ -732,3 +738,29 @@ class TestDockerfileParser(object):
             LABEL component="$NAME$VER"
         """)
         assert dfparser.labels['component'] == 'name1'
+
+    def test_label_env_key(self, dfparser):
+        """
+        Verify keys may be substituted with values containing space.
+
+        Surprisingly, Docker allows environment variable substitution even
+        in the keys of labels, and not only that but it allows them to
+        contain spaces.
+        """
+        dfparser.content = dedent("""\
+            FROM scratch
+            ENV FOOBAR="foo bar"
+            LABEL "$FOOBAR"="baz"
+        """)
+        assert dfparser.labels['foo bar'] == 'baz'
+
+    @pytest.mark.parametrize('value', [
+        'a=b c',
+    ])
+    def test_label_invalid(self, dfparser, value):
+        dfparser.content = '\n'.join([
+            "FROM scratch",
+            "LABEL {0}".format(value),
+        ])
+        with pytest.raises(Exception):
+            dfparser.labels
