@@ -350,7 +350,7 @@ class TestDockerfileParser(object):
          'first',
          ['a b\n',
           'x="y z"\n',
-          'second=second\n']),
+          '"second"="second"\n']),
 
         #  Remove second of two instructions on the same line
         (['a b\n',
@@ -359,7 +359,7 @@ class TestDockerfileParser(object):
          'second',
          ['a b\n',
           'x="y z"\n',
-          'first=first\n']),
+          '"first"="first"\n']),
     ])
     def test_delete_instruction(self, dfparser, instruction, existing, delete_key, expected):
         existing = [instruction + ' ' + i for i in existing]
@@ -403,7 +403,7 @@ class TestDockerfileParser(object):
           'first=\'first value\' "second"=second\n',
           'x="y z"\n'],
          {'first': 'changed', 'second': 'second'},
-         ['first=changed second=second\n']),
+         ['first=changed "second"=second\n']),
 
         # Delete one label of a multi-value LABEL/ENV statement
         (['a b\n',
@@ -415,8 +415,8 @@ class TestDockerfileParser(object):
         # Nested quotes
         (['"ownership"="Alice\'s label" other=value\n'],
          {'ownership': "Alice's label"},
-         # quote() will always use single quotes when it can
-         ["ownership='Alice\'\"\'\"\'s label'\n"]),
+         # Keeps existing key quoting style
+         ['"ownership"="Alice\'s label"\n']),
 
         # Modify a single value that needs quoting
         (['foo bar\n'],
@@ -440,16 +440,19 @@ class TestDockerfileParser(object):
     @pytest.mark.parametrize(('old_instructions', 'key', 'new_value', 'expected'), [
         # Simple case, no '=' or quotes
         ('Release 1', 'Release', '2', 'Release 2'),
-        # No '=' but quotes
-        ('"Release" "2"', 'Release', '3', 'Release 3'),
+        # No '=' but quotes (which are kept)
+        ('"Release" "2"', 'Release', '3', '"Release" 3'),
         # Simple case, '=' but no quotes
         ('Release=1', 'Release', '6', 'Release=6'),
-        # '=' and quotes
-        ('"Name"=\'alpha alpha\' Version=1', 'Name', 'beta delta', 'Name=\'beta delta\' Version=1'),
+        # '=' and quotes, with space in the value
+        ('"Name"=\'alpha alpha\' Version=1', 'Name', 'beta delta', '"Name"=\'beta delta\' Version=1'),
+        ('Name=foo', 'Name', 'new value', "Name='new value'"),
+        # ' ' and quotes
+        ('"Name" alpha alpha', 'Name', 'beta delta', "\"Name\" 'beta delta'"),
         # '=', multiple labels, no quotes
         ('Name=foo Release=3', 'Release', '4', 'Name=foo Release=4'),
         # '=', multiple labels and quotes
-        ('Name=\'foo bar\' "Release"="4"', 'Release', '5', 'Name=\'foo bar\' Release=5'),
+        ('Name=\'foo bar\' "Release"="4"', 'Release', '5', 'Name=\'foo bar\' "Release"=5'),
         # Release that's not entirely numeric
         ('Version=1.1', 'Version', '2.1', 'Version=2.1'),
     ])
