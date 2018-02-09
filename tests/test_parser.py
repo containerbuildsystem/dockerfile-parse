@@ -167,60 +167,41 @@ class TestDockerfileParser(object):
 
         assert not df1.envs
 
-    def test_get_instructions_from_df(self, dfparser, instruction):
-        dfparser.content = ""
-        lines = []
-        i = instruction
-        lines.insert(-1, '{0} "name1"=\'value 1\' "name2"=myself name3=""\n'.format(i))
-        lines.insert(-1, '{0} name5=5\n'.format(i))
-        lines.insert(-1, '{0} "name6"=6\n'.format(i))
-        lines.insert(-1, '{0} name7\n'.format(i))
-        lines.insert(-1, '{0} "name8"\n'.format(i))
-        lines.insert(-1, '{0} "name9"="asd \\  \\n qwe"\n'.format(i))
-        lines.insert(-1, '{0} "name10"="{1}"\n'.format(i, NON_ASCII))
-        lines.insert(-1, '{0} "name1 1"=1\n'.format(i))
-        lines.insert(-1, '{0} "name12"=12 \ \n   "name13"=13\n'.format(i))
-        lines.insert(-1, '{0} name14=1\ 4\n'.format(i))
-        lines.insert(-1, '{0} name15="with = in value"\n'.format(i))
+    @pytest.mark.parametrize(('instr_value', 'expected'), [
+        ('"name1"=\'value 1\' "name2"=myself name3=""',
+         {'name1': 'value 1',
+          'name2': 'myself',
+          'name3': ''}),
+        ('name5=5', {'name5': '5'}),
+        ('"name6"=6', {'name6': '6'}),
+        ('name7', {'name7': ''}),
+        ('"name8"', {'name8': ''}),
+        ('"name9"="asd \\  \\n qwe"', {'name9': 'asd \\  \\n qwe'}),
+        ('"name10"="{0}"'.format(NON_ASCII), {'name10': NON_ASCII}),
+        ('"name1 1"=1', {'name1 1': '1'}),
+        ('"name12"=12 \ \n   "name13"=13', {'name12': '12', 'name13': '13'}),
+        ('name14=1\ 4', {'name14': '1 4'}),
+        ('name15="with = in value"', {'name15': 'with = in value'}),
         # old syntax (without =)
-        lines.insert(-1, '{0} name101 101\n'.format(i))
-        lines.insert(-1, '{0} name102 1 02\n'.format(i))
-        lines.insert(-1, '{0} "name103" 1 03\n'.format(i))
-        lines.insert(-1, '{0} name104 "1"  04\n'.format(i))
-        lines.insert(-1, '{0} name105 1 \'05\'\n'.format(i))
-        lines.insert(-1, '{0} name106 1 \'0\'   6\n'.format(i))
-        lines.insert(-1, '{0} name107 1 0\ 7\n'.format(i))
-        lines.insert(-1, '{0} name108 "with = in value"\n'.format(i))
-        lines.insert(-1, '{0} name109 "\\"quoted\\""\n'.format(i))
-        dfparser.lines = lines
+        ('name101 101', {'name101': '101'}),
+        ('name102 1 02', {'name102': '1 02'}),
+        ('"name103" 1 03', {'name103': '1 03'}),
+        ('name104 "1"  04', {'name104': '1  04'}),
+        ('name105 1 \'05\'', {'name105': '1 05'}),
+        ('name106 1 \'0\'   6', {'name106': '1 0   6'}),
+        ('name107 1 0\ 7', {'name107': '1 0 7'}),
+        ('name108 "with = in value"', {'name108': 'with = in value'}),
+        ('name109 "\\"quoted\\""', {'name109': '"quoted"'}),
+    ])
+    def test_get_instructions_from_df(self, dfparser, instruction, instr_value,
+                                      expected):
+        dfparser.content = "{0} {1}\n".format(instruction, instr_value)
         if instruction == 'LABEL':
             instructions = dfparser.labels
         elif instruction == 'ENV':
             instructions = dfparser.envs
-        assert len(instructions) == 23
-        assert instructions.get('name1') == 'value 1'
-        assert instructions.get('name2') == 'myself'
-        assert instructions.get('name3') == ''
-        assert instructions.get('name5') == '5'
-        assert instructions.get('name6') == '6'
-        assert instructions.get('name7') == ''
-        assert instructions.get('name8') == ''
-        assert instructions.get('name9') == 'asd \\  \\n qwe'
-        assert instructions.get('name10') == '{0}'.format(NON_ASCII)
-        assert instructions.get('name1 1') == '1'
-        assert instructions.get('name12') == '12'
-        assert instructions.get('name13') == '13'
-        assert instructions.get('name14') == '1 4'
-        assert instructions.get('name15') == 'with = in value'
-        assert instructions.get('name101') == '101'
-        assert instructions.get('name102') == '1 02'
-        assert instructions.get('name103') == '1 03'
-        assert instructions.get('name104') == '1  04'
-        assert instructions.get('name105') == '1 05'
-        assert instructions.get('name106') == '1 0   6'
-        assert instructions.get('name107') == '1 0 7'
-        assert instructions.get('name108') == 'with = in value'
-        assert instructions.get('name109') == '"quoted"'
+
+        assert instructions == expected
 
     def test_modify_instruction(self, dfparser):
         FROM = ('ubuntu', 'fedora:latest')
