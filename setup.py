@@ -28,7 +28,7 @@ def _install_requirements():
 
 setup(
     name='dockerfile-parse',
-    version='0.0.8',
+    version='0.0.9pre',
     description='Python library for Dockerfile manipulation',
     author='Jiri Popelka',
     author_email='jpopelka@redhat.com',
