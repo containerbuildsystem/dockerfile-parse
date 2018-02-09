@@ -23,7 +23,7 @@
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-%{srcname}
-Version:        0.0.9
+Version:        0.0.9pre
 Release:        0.1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
