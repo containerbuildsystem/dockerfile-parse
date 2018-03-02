@@ -528,6 +528,8 @@ class DockerfileParser(object):
             new_line = '{0} {1}\n'.format(instruction, value)
         if new_line:
             lines = self.lines
+            if not lines[len(lines) - 1].endswith('\n'):
+                new_line = '\n' + new_line
             lines += new_line
             self.lines = lines
 

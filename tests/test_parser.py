@@ -748,3 +748,18 @@ class TestDockerfileParser(object):
         ])
         with pytest.raises(Exception):
             dfparser.labels
+
+    def test_remove_whitespace(self, tmpdir):
+        """
+        Verify keys are parsed correctly even if there is no final newline.
+
+        """
+        with open(os.path.join(str(tmpdir), 'Dockerfile'), 'w') as fp:
+            fp.write('FROM scratch')
+        tmpdir_path = str(tmpdir.realpath())
+        df1 = DockerfileParser(tmpdir_path)
+        df1.labels['foo'] = 'bar'
+
+        df2 = DockerfileParser(tmpdir_path, True)
+        assert df2.baseimage == 'scratch'
+        assert df2.labels['foo'] == 'bar'
