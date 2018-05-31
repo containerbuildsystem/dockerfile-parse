@@ -54,7 +54,12 @@ $RUN $PYTHON setup.py install
 $RUN $PIP install -r tests/requirements.txt
 
 # CentOS needs to have setuptools updates to make pytest-cov work
-if [[ $OS != "fedora" ]]; then $RUN $PIP install -U setuptools; fi
+if [[ $OS != "fedora" ]]; then
+  $RUN $PIP install -U setuptools
+  # Watch out for https://github.com/pypa/setuptools/issues/937
+  $RUN curl -O https://bootstrap.pypa.io/2.6/get-pip.py
+  $RUN $PYTHON get-pip.py
+fi
 if [[ $PYTHON_VERSION -gt 2 ]]; then $RUN $PIP install -r requirements-py3.txt; fi
 
 # Run tests
