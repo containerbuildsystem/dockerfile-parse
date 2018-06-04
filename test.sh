@@ -6,11 +6,16 @@ OS=${OS:="centos"}
 OS_VERSION=${OS_VERSION:="6"}
 PYTHON_VERSION=${PYTHON_VERSION:="2"}
 IMAGE="$OS:$OS_VERSION"
+docker_mounts="-v $PWD:$PWD:z"
+for dir in ${EXTRA_MOUNT:-}; do
+  docker_mounts="${docker_mounts} -v $dir:$dir:z"
+done
 
 # Pull fedora images from registry.fedoraproject.org
 if [[ $OS == "fedora" ]]; then
   IMAGE="registry.fedoraproject.org/$IMAGE"
 fi
+
 
 CONTAINER_NAME="dockerfile-parse-$OS-$OS_VERSION-py$PYTHON_VERSION"
 RUN="docker exec -ti $CONTAINER_NAME"
@@ -29,10 +34,14 @@ else
   BUILDDEP="yum-builddep"
   PYTHON="python"
 fi
-# Create container if needed
-if [[ $(docker ps -q -f name=$CONTAINER_NAME | wc -l) -eq 0 ]]; then
-  docker run --name $CONTAINER_NAME -d -v $PWD:$PWD:z -w $PWD -ti $IMAGE sleep infinity
-fi
+
+# Create or resurrect container if needed
+if [[ $(docker ps -qa -f name=$CONTAINER_NAME | wc -l) -eq 0 ]]; then
+  docker run --name $CONTAINER_NAME -d $docker_mounts -w $PWD -ti $IMAGE sleep infinity
+elif [[ $(docker ps -q -f name=$CONTAINER_NAME | wc -l) -eq 0 ]]; then
+  echo found stopped existing container, restarting. volume mounts cannot be updated.
+  docker container start $CONTAINER_NAME
+ fi
 
 # Install dependencies
 $RUN $PKG install -y $PKG_EXTRA
@@ -63,4 +72,7 @@ fi
 if [[ $PYTHON_VERSION -gt 2 ]]; then $RUN $PIP install -r requirements-py3.txt; fi
 
 # Run tests
-$RUN py.test -vv tests --cov dockerfile_parse "$@"
+$RUN py.test --cov dockerfile_parse --cov-report html -vv tests "$@"
+
+echo "To run tests again:"
+echo "$RUN py.test --cov dockerfile_parse --cov-report html -vv tests"
