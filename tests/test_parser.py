@@ -257,7 +257,7 @@ class TestDockerfileParser(object):
 
         assert instructions == expected
 
-    @pytest.mark.parametrize('from_value, expect', [
+    @pytest.mark.parametrize(('from_value', 'expect'), [
         (
             "    ",
             (None, None),
@@ -903,7 +903,7 @@ class TestDockerfileParser(object):
         assert "begin with new" in dfparser.lines[0]
         assert "end with new" in dfparser.lines[2]
 
-    @pytest.mark.parametrize('anchor, raises', [
+    @pytest.mark.parametrize(('anchor', 'raises'), [
         (
             3, None
         ),
