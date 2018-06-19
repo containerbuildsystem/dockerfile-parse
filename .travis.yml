@@ -11,16 +11,16 @@ env:
       OS_VERSION=7
       PYTHON_VERSION=2
     - OS=fedora
-      OS_VERSION=26
+      OS_VERSION=27
       PYTHON_VERSION=2
     - OS=fedora
-      OS_VERSION=26
+      OS_VERSION=27
       PYTHON_VERSION=3
     - OS=fedora
-      OS_VERSION=27
+      OS_VERSION=28
       PYTHON_VERSION=2
     - OS=fedora
-      OS_VERSION=27
+      OS_VERSION=28
       PYTHON_VERSION=3
 script:
  - pip install coveralls
