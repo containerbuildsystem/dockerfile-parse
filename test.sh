@@ -49,6 +49,8 @@ $RUN $BUILDDEP -y python-dockerfile-parse.spec
 if [[ $OS != "fedora" ]]; then
   # Install dependecies for test, as check is disabled for rhel
   $RUN yum install -y python-six
+  # But remove outdated pytest package so we install it from pip later
+  $RUN yum remove -y pytest
 fi
 
 # Install package
