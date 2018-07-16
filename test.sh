@@ -64,7 +64,14 @@ $RUN $PIP install -r tests/requirements.txt
 
 # CentOS needs to have setuptools updates to make pytest-cov work
 if [[ $OS != "fedora" ]]; then
-  $RUN $PIP install -U setuptools
+  if [[ $OS_VERSION != '6' ]] ; then
+      $RUN $PIP install -U setuptools
+  else
+      # setuptools 40.0 is incompatible with Python 2.6 because of this change
+      # https://github.com/pypa/setuptools/commit/7392f0#diff-c6950cefad8b244938b76f24a0db9a6aR51
+      $RUN $PIP install -U setuptools==39.2.0
+  fi
+
   # Watch out for https://github.com/pypa/setuptools/issues/937
   $RUN curl -O https://bootstrap.pypa.io/2.6/get-pip.py
   $RUN $PYTHON get-pip.py
