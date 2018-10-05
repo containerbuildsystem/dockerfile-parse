@@ -19,7 +19,7 @@
 %global srcname dockerfile-parse
 %global modname %(n=%{srcname}; echo ${n//-/_})
 
-%global commit ab78f10ac800ce264489db1e9153b6253f4c9927
+%global commit 78c291b91eaa1f46cb7dd5c44dc71536bf408076
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-%{srcname}
