@@ -896,6 +896,30 @@ class TestDockerfileParser(object):
         assert len([line for line in dfparser.lines if "something new" in line]) == 2
         assert len(dfparser.lines) == 7
 
+    @pytest.mark.parametrize('at_start', [True, False])
+    def test_add_lines_stages_skip_scratch(self, dfparser, at_start):
+        dfparser.content = dedent("""\
+            From builder
+            CMD xyz
+            From scratch
+            LABEL type=scratch
+            From base
+            LABEL a=b c=d
+            ENV h i
+            From scratch
+            LABEL type=scratch2
+            """)
+        dfparser.add_lines("something new", all_stages=True, skip_scratch=True, at_start=at_start)
+
+        if at_start:
+            assert "something new" in dfparser.lines[1]
+            assert "something new" in dfparser.lines[6]
+        else:
+            assert "something new" in dfparser.lines[2]
+            assert "something new" in dfparser.lines[8]
+        assert len([line for line in dfparser.lines if "something new" in line]) == 2
+        assert len(dfparser.lines) == 11
+
     def test_add_lines_stage_edge(self, dfparser):
         dfparser.content = "# no from or newline"
         dfparser.add_lines("begin with new", at_start=True)

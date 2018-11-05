@@ -597,11 +597,13 @@ class DockerfileParser(object):
         :param all_stages: bool for whether to add in all stages for a multistage build
                            or (by default) only the last.
         :param at_start: adds at the beginning (after FROM) of the stage(s) instead of the end.
+        :param skip_scratch: skip stages which use "FROM scratch"
         """
         assert len(lines) > 0
         lines = [_endline(line) for line in lines]
         all_stages = kwargs.pop('all_stages', False)
         at_start = kwargs.pop('at_start', False)
+        skip_scratch = kwargs.pop('skip_scratch', False)
         assert not kwargs, "Unknown keyword argument(s): {0}".format(kwargs.keys())
 
         froms = [
@@ -623,6 +625,8 @@ class DockerfileParser(object):
         for stage in range(len(froms)-2, -1, -1):  # e.g. 0 for single or 2, 1, 0 for 3 stages
             start, finish = froms[stage], froms[stage+1]
             linenum = start['endline'] + 1 if at_start else finish['startline']
+            if skip_scratch and froms[stage]['value'] == 'scratch':
+                continue
             df_lines[linenum:linenum] = lines
 
         self.lines = df_lines
