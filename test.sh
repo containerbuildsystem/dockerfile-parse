@@ -59,8 +59,13 @@ if [[ $PYTHON_VERSION == 3 ]]; then
 fi
 $RUN $PYTHON setup.py install
 
-# Install packages for tests
-$RUN $PIP install -r tests/requirements.txt
+# py >= 1.6.0 (py is a pytest dependency) is incompatible with Python 2.6
+VERSIONED_PY=
+if [[ $OS != "fedora" && $OS_VERSION == '6' ]] ; then
+    VERSIONED_PY="py==1.5.4"
+fi
+
+$RUN $PIP install -r tests/requirements.txt $VERSIONED_PY
 
 # CentOS needs to have setuptools updates to make pytest-cov work
 if [[ $OS != "fedora" ]]; then
