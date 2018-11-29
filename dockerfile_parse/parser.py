@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Copyright (c) 2015 Red Hat, Inc
+Copyright (c) 2015, 2018 Red Hat, Inc
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -81,7 +81,8 @@ class DockerfileParser(object):
         :param path: path to (directory with) Dockerfile
         :param cache_content: cache Dockerfile content inside DockerfileParser
         :param parent_env: python dict of inherited env vars from parent image
-        :param fileobj: seekable file-like object containing Dockerfile content (will be truncated on write)
+        :param fileobj: seekable file-like object containing Dockerfile content
+                        as bytes (will be truncated on write)
         """
 
         self.fileobj = fileobj
