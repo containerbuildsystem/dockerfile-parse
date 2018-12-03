@@ -3,7 +3,7 @@ set -eux
 
 # Prepare env vars
 OS=${OS:="centos"}
-OS_VERSION=${OS_VERSION:="6"}
+OS_VERSION=${OS_VERSION:="7"}
 PYTHON_VERSION=${PYTHON_VERSION:="2"}
 IMAGE="$OS:$OS_VERSION"
 docker_mounts="-v $PWD:$PWD:z"
@@ -59,23 +59,11 @@ if [[ $PYTHON_VERSION == 3 ]]; then
 fi
 $RUN $PYTHON setup.py install
 
-# py >= 1.6.0 (py is a pytest dependency) is incompatible with Python 2.6
-VERSIONED_PY=
-if [[ $OS != "fedora" && $OS_VERSION == '6' ]] ; then
-    VERSIONED_PY="py==1.5.4"
-fi
-
-$RUN $PIP install -r tests/requirements.txt $VERSIONED_PY
+$RUN $PIP install -r tests/requirements.txt
 
 # CentOS needs to have setuptools updates to make pytest-cov work
 if [[ $OS != "fedora" ]]; then
-  if [[ $OS_VERSION != '6' ]] ; then
-      $RUN $PIP install -U setuptools
-  else
-      # setuptools 40.0 is incompatible with Python 2.6 because of this change
-      # https://github.com/pypa/setuptools/commit/7392f0#diff-c6950cefad8b244938b76f24a0db9a6aR51
-      $RUN $PIP install -U setuptools==39.2.0
-  fi
+  $RUN $PIP install -U setuptools
 
   # Watch out for https://github.com/pypa/setuptools/issues/937
   $RUN curl -O https://bootstrap.pypa.io/2.6/get-pip.py

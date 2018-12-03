@@ -5,9 +5,6 @@ services:
 env:
   matrix:
     - OS=centos
-      OS_VERSION=6
-      PYTHON_VERSION=2
-    - OS=centos
       OS_VERSION=7
       PYTHON_VERSION=2
     - OS=fedora
