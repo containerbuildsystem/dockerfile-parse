@@ -9,7 +9,9 @@ of the BSD license. See the LICENSE file for details.
 
 import re
 import sys
+import io
 
+from os import path
 from setuptools import setup, find_packages
 
 def _get_requirements(path):
@@ -26,10 +28,18 @@ def _install_requirements():
         requirements += _get_requirements('requirements-py3.txt')
     return requirements
 
+here = path.abspath(path.dirname(__file__))
+
+# Get the long description from the README file
+with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+
 setup(
     name='dockerfile-parse',
     version='0.0.13',
     description='Python library for Dockerfile manipulation',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author='Jiri Popelka',
     author_email='jpopelka@redhat.com',
     url='https://github.com/DBuildService/dockerfile-parse',
