@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Copyright (c) 2015 Red Hat, Inc
+Copyright (c) 2015, 2019 Red Hat, Inc
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -1033,6 +1033,38 @@ class TestDockerfileParser(object):
         assert "d#" not in dfparser.content
         assert 4 == len(dfparser.lines)
         assert "something new" in dfparser.lines[3]
+
+    def test_add_lines_after_continuation(self, dfparser):
+        dfparser.content = dedent("""\
+            FROM builder
+            RUN touch foo; \\
+                touch bar
+            """)
+
+        fromline = dfparser.structure[1]
+        assert fromline['instruction'] == 'RUN'
+        dfparser.add_lines_at(fromline, "# something new", after=True)
+        assert dfparser.lines == [
+            "FROM builder\n",
+            "RUN touch foo; \\\n",
+            "    touch bar\n",
+            "# something new\n",
+        ]
+
+    def test_replace_lines_continuation(self, dfparser):
+        dfparser.content = dedent("""\
+            FROM builder
+            RUN touch foo; \\
+                touch bar
+            """)
+
+        fromline = dfparser.structure[1]
+        assert fromline['instruction'] == 'RUN'
+        dfparser.add_lines_at(fromline, "# something new", replace=True)
+        assert dfparser.lines == [
+            "FROM builder\n",
+            "# something new\n",
+        ]
 
     def test_remove_whitespace(self, tmpdir):
         """
