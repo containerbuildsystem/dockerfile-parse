@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Copyright (c) 2015, 2018 Red Hat, Inc
+Copyright (c) 2015, 2018, 2019 Red Hat, Inc
 All rights reserved.
 
 This software may be modified and distributed under the terms
@@ -656,7 +656,10 @@ class DockerfileParser(object):
             assert anchor in self.structure, "Current structure does not match: {0}".format(anchor)
             if replace:
                 df_lines[anchor['startline']:anchor['endline'] + 1] = []
-            anchor = anchor['startline']
+            if after:
+                anchor = anchor['endline']
+            else:
+                anchor = anchor['startline']
         elif isinstance(anchor, string_types):  # line contents
             matches = [index for index, text in enumerate(df_lines) if text == anchor]
             if not matches:
