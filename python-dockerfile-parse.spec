@@ -28,7 +28,7 @@ Release:        1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
 License:        BSD
-URL:            https://github.com/DBuildService/dockerfile-parse
+URL:            https://github.com/containerbuildsystem/dockerfile-parse
 Source0:        %{url}/archive/%{commit}/%{srcname}-%{commit}.tar.gz
 
 BuildArch:      noarch

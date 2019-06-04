@@ -32,7 +32,7 @@ setup(
     description='Python library for Dockerfile manipulation',
     author='Jiri Popelka',
     author_email='jpopelka@redhat.com',
-    url='https://github.com/DBuildService/dockerfile-parse',
+    url='https://github.com/containerbuildsystem/dockerfile-parse',
     license="BSD",
     packages=find_packages(exclude=["tests"]),
     install_requires=_install_requirements(),

@@ -1,8 +1,8 @@
 dockerfile-parse
 ====
 
-[![Build Status](https://travis-ci.org/DBuildService/dockerfile-parse.svg?branch=master)](https://travis-ci.org/DBuildService/dockerfile-parse)
-[![Coverage Status](https://coveralls.io/repos/DBuildService/dockerfile-parse/badge.svg?branch=master&service=github)](https://coveralls.io/github/DBuildService/dockerfile-parse?branch=master)
+[![Build Status](https://travis-ci.org/containerbuildsystem/dockerfile-parse.svg?branch=master)](https://travis-ci.org/containerbuildsystem/dockerfile-parse)
+[![Coverage Status](https://coveralls.io/repos/containerbuildsystem/dockerfile-parse/badge.svg?branch=master&service=github)](https://coveralls.io/github/containerbuildsystem/dockerfile-parse?branch=master)
 
 Python library for parsing Dockerfile files.
 
@@ -20,7 +20,7 @@ $ pip install dockerfile-parse
 Clone this git repo and install dockerfile-parse using python installer:
 
 ```shell
-$ git clone https://github.com/DBuildService/dockerfile-parse.git
+$ git clone https://github.com/containerbuildsystem/dockerfile-parse.git
 $ cd dockerfile-parse
 $ sudo pip install .
 ```
