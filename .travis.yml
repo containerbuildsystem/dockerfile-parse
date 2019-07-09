@@ -4,6 +4,14 @@ services:
   - docker
 env:
   matrix:
+    - ACTION=bandit
+      OS=fedora
+      OS_VERSION=29
+      PYTHON_VERSION=2
+    - ACTION=bandit
+      OS=fedora
+      OS_VERSION=29
+      PYTHON_VERSION=3
     - OS=centos
       OS_VERSION=7
       PYTHON_VERSION=2

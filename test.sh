@@ -5,6 +5,7 @@ set -eux
 OS=${OS:="centos"}
 OS_VERSION=${OS_VERSION:="7"}
 PYTHON_VERSION=${PYTHON_VERSION:="2"}
+ACTION=${ACTION:="test"}
 IMAGE="$OS:$OS_VERSION"
 docker_mounts="-v $PWD:$PWD:z"
 for dir in ${EXTRA_MOUNT:-}; do
@@ -71,8 +72,23 @@ if [[ $OS != "fedora" ]]; then
 fi
 if [[ $PYTHON_VERSION -gt 2 ]]; then $RUN $PIP install -r requirements-py3.txt; fi
 
+case ${ACTION} in
+"test")
+  TEST_CMD="py.test --cov dockerfile_parse --cov-report html -vv tests"
+  ;;
+"bandit")
+  $RUN $PKG install -y git-core
+  $RUN $PIP install bandit
+  TEST_CMD="bandit-baseline -r dockerfile_parse -ll -ii"
+  ;;
+*)
+  echo "Unknown action: ${ACTION}"
+  exit 2
+  ;;
+esac
+
 # Run tests
-$RUN py.test --cov dockerfile_parse --cov-report html -vv tests "$@"
+$RUN ${TEST_CMD} "$@"
 
 echo "To run tests again:"
-echo "$RUN py.test --cov dockerfile_parse --cov-report html -vv tests"
+echo "$RUN ${TEST_CMD}"
