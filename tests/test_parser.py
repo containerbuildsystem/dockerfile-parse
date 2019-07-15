@@ -929,16 +929,34 @@ class TestDockerfileParser(object):
         """)
         assert dfparser.labels['foo bar'] == 'baz'
 
-    @pytest.mark.parametrize('value', [
-        'a=b c',
+    @pytest.mark.parametrize('label_value, bad_keyval, envs', [
+        ('a=b c', 'c', None),
+        # if variable substitution was done too early, this could be an issue
+        ('a=1 $CHEEKY_VARIABLE', '$CHEEKY_VARIABLE', {'CHEEKY_VARIABLE': 'b=2'})
     ])
-    def test_label_invalid(self, dfparser, value):
-        dfparser.content = '\n'.join([
-            "FROM scratch",
-            "LABEL {0}".format(value),
-        ])
-        with pytest.raises(Exception):
-            dfparser.labels
+    @pytest.mark.parametrize('action', ['get', 'set'])
+    def test_label_invalid(self, dfparser, label_value, bad_keyval, envs, action):
+        if envs:
+            env_vals = ('{0}="{1}"'.format(k, v) for k, v in envs.items())
+            env_line = 'ENV {values}\n'.format(values=' '.join(env_vals))
+        else:
+            env_line = ''
+
+        dfparser.lines = [
+            "FROM scratch\n",
+            env_line,   # has to appear before the LABEL line
+            "LABEL {0}\n".format(label_value),
+        ]
+        with pytest.raises(ValueError) as exc_info:
+            if action == 'get':
+                dfparser.labels
+            elif action == 'set':
+                dfparser.labels = {}
+
+        msg = str(exc_info.value)
+        assert msg == ('Syntax error - can\'t find = in "{word}". '
+                       'Must be of the form: name=value'
+                       .format(word=bad_keyval))
 
     def test_add_lines_stages(self, dfparser):
         dfparser.content = dedent("""\

@@ -239,6 +239,10 @@ def extract_labels_or_envs(env_replace, envs, instruction_value):
         #   LABEL/ENV "name"="value" ["name"="value"...]
         # Each word is a key=value pair.
         for k_v in words:
+            if '=' not in k_v:
+                raise ValueError('Syntax error - can\'t find = in "{word}". '
+                                 'Must be of the form: name=value'
+                                 .format(word=k_v))
             key, val = [substitute_vars(x) for x in k_v.split('=', 1)]
             key_val_list.append((key, val))
 
