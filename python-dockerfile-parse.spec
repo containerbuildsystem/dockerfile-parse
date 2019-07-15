@@ -21,7 +21,7 @@
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-%{srcname}
-Version:        0.0.14
+Version:        0.0.15
 Release:        1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
@@ -115,6 +115,9 @@ py.test-%{python2_version} -v tests
 %endif
 
 %changelog
+* Mon Jul 15 2019 Robert Cerven <rcerven@redhat.com> - 0.0.15-1
+- new upstream release: 0.0.15
+
 * Fri Apr 26 2019 Robert Cerven <rcerven@redhat.com> - 0.0.14-1
 - new upstream release: 0.0.14
 
