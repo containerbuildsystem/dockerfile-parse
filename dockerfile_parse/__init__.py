@@ -8,4 +8,10 @@ of the BSD license. See the LICENSE file for details.
 
 from .parser import DockerfileParser
 
-__version__ = "0.0.15"
+from pkg_resources import get_distribution, DistributionNotFound
+
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    pass
