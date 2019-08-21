@@ -60,8 +60,6 @@ if [[ $PYTHON_VERSION == 3 ]]; then
 fi
 $RUN $PYTHON setup.py install
 
-$RUN $PIP install -r tests/requirements.txt
-
 # CentOS needs to have setuptools updates to make pytest-cov work
 if [[ $OS != "fedora" ]]; then
   $RUN $PIP install -U setuptools
@@ -70,6 +68,9 @@ if [[ $OS != "fedora" ]]; then
   $RUN curl -O https://bootstrap.pypa.io/2.6/get-pip.py
   $RUN $PYTHON get-pip.py
 fi
+
+$RUN $PIP install -r tests/requirements.txt
+
 if [[ $PYTHON_VERSION -gt 2 ]]; then $RUN $PIP install -r requirements-py3.txt; fi
 
 case ${ACTION} in
