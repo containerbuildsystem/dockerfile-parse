@@ -1,9 +1,5 @@
 %if 0%{?rhel} && 0%{?rhel} <= 7
 %bcond_with python3
-%if 0%{?rhel} <= 6
-%{!?python2_version: %global python2_version %(%{__python2} -c "import sys; sys.stdout.write(sys.version[:3])")}
-%{!?_licensedir:%global license %%doc}
-%endif
 %else
 %bcond_without python3
 %endif
