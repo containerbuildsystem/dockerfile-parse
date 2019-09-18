@@ -38,11 +38,12 @@ BuildRequires:  python2-six
 %if 0%{?rhel} && 0%{?rhel} <= 7
 BuildRequires:  python-setuptools
 BuildRequires:  pytest
+Requires:  python-six
 %else
 BuildRequires:  python2-setuptools
 BuildRequires:  python2-pytest
-%endif
 Requires:  python2-six
+%endif
 
 %description -n python2-%{srcname}
 %{summary}.
