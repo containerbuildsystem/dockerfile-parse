@@ -1,24 +1,19 @@
 %if 0%{?rhel} && 0%{?rhel} <= 7
-%{!?py2_build: %global py2_build %{__python2} setup.py build}
-%{!?py2_install: %global py2_install %{__python2} setup.py install --skip-build --root %{buildroot}}
 %bcond_with python3
-%if 0%{?rhel} <= 6
-%{!?__python2: %global __python2 /usr/bin/python2}
-%{!?python2_sitelib: %global python2_sitelib %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
-%{!?python2_sitearch: %global python2_sitearch %(%{__python2} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(1))")}
-%{!?python2_version: %global python2_version %(%{__python2} -c "import sys; sys.stdout.write(sys.version[:3])")}
-%endif
 %else
 %bcond_without python3
+%endif
+
+%if 0%{?fedora} && 0%{?fedora} >= 30
+%bcond_with python2
+%else
+%bcond_without python2
 %endif
 
 %bcond_without tests
 
 %global srcname dockerfile-parse
 %global modname %(n=%{srcname}; echo ${n//-/_})
-
-%global commit 256e7fc490a8accda0b6b6f84436b0dcd4d7b707
-%global shortcommit %(c=%{commit}; echo ${c:0:7})
 
 Name:           python-%{srcname}
 Version:        0.0.15
@@ -27,13 +22,34 @@ Release:        1%{?dist}
 Summary:        Python library for Dockerfile manipulation
 License:        BSD
 URL:            https://github.com/containerbuildsystem/dockerfile-parse
-Source0:        %{url}/archive/%{commit}/%{srcname}-%{commit}.tar.gz
+Source0:        %{url}/archive/%{version}/%{srcname}-%{version}.tar.gz
 
 BuildArch:      noarch
 
 %description
 %{summary}.
 
+%if %{with python2}
+%package -n python2-%{srcname}
+Summary:        %{summary}
+%{?python_provide:%python_provide python2-%{srcname}}
+BuildRequires:  python2-devel
+BuildRequires:  python2-six
+%if 0%{?rhel} && 0%{?rhel} <= 7
+BuildRequires:  python-setuptools
+BuildRequires:  pytest
+Requires:  python-six
+%else
+BuildRequires:  python2-setuptools
+BuildRequires:  python2-pytest
+Requires:  python2-six
+%endif
+
+%description -n python2-%{srcname}
+%{summary}.
+
+Python 2 version.
+%endif # python2 pkg
 
 %if %{with python3}
 %package -n python3-%{srcname}
@@ -42,76 +58,62 @@ Summary:        %{summary}
 BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
 %if %{with tests}
-BuildRequires:  python3-six
 BuildRequires:  python3-pytest
+BuildRequires:  python3-six
 %endif
-Requires: python3-six
+Requires:  python3-six
 
 %description -n python3-%{srcname}
 %{summary}.
 
 Python 3 version.
-
-%else
-%package -n python2-%{srcname}
-Summary:        %{summary}
-%{?python_provide:%python_provide python2-%{srcname}}
-BuildRequires:  python2-devel
-BuildRequires:  python-setuptools
-%if %{with tests}
-BuildRequires:  python-six
-BuildRequires:  pytest
-%endif
-Requires: python-six
-
-%description -n python2-%{srcname}
-%{summary}.
-
-Python 2 version.
-%endif
+%endif #python3 pkg
 
 %prep
-%setup -n %{srcname}-%{commit}
+%setup -q -n %{srcname}-%{version}
+
 
 %build
+%if %{with python2}
+%py2_build
+%endif # python2
 %if %{with python3}
 %py3_build
-%else
-%py2_build
 %endif
 
 %install
+%if %{with python2}
+%py2_install
+%endif #python2
 %if %{with python3}
 %py3_install
-%else
-%py2_install
 %endif
 
 %if %{with tests}
 %check
-export LANG=C.utf8
+export LANG=C.UTF-8
+%if %{with python2}
+py.test-%{python2_version} -v tests
+%endif # python2
 %if %{with python3}
 py.test-%{python3_version} -v tests
-%else
-py.test-%{python2_version} -v tests
-%endif
+%endif # python3
 %endif
 
-
-%if %{with python3}
-%files -n python3-%{srcname}
-%{!?_licensedir:%global license %%doc}
-%license LICENSE
-%doc README.md
-%{python3_sitelib}/%{modname}-*.egg-info/
-%{python3_sitelib}/%{modname}/
-%else
-%files -n python-%{srcname}
-%{!?_licensedir:%global license %%doc}
+%if %{with python2}
+%files -n python2-%{srcname}
 %license LICENSE
 %doc README.md
 %{python2_sitelib}/%{modname}-*.egg-info/
 %{python2_sitelib}/%{modname}/
+%endif
+
+%if %{with python3}
+%files -n python3-%{srcname}
+%license LICENSE
+%doc README.md
+%{python3_sitelib}/%{modname}-*.egg-info/
+%{python3_sitelib}/%{modname}/
 %endif
 
 %changelog
