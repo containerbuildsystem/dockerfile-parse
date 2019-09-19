@@ -34,12 +34,13 @@ BuildArch:      noarch
 Summary:        %{summary}
 %{?python_provide:%python_provide python2-%{srcname}}
 BuildRequires:  python2-devel
-BuildRequires:  python2-six
 %if 0%{?rhel} && 0%{?rhel} <= 7
+BuildRequires:  python-six
 BuildRequires:  python-setuptools
 BuildRequires:  pytest
 Requires:  python-six
 %else
+BuildRequires:  python2-six
 BuildRequires:  python2-setuptools
 BuildRequires:  python2-pytest
 Requires:  python2-six
