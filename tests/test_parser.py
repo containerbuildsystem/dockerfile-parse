@@ -186,22 +186,22 @@ class TestDockerfileParser(object):
     def test_dockerfile_json(self, dfparser):
         dfparser.content = dedent("""\
             # comment
-            From  base
-            LABEL foo="bar baz"
+            From  base:❤
+            LABEL foo="bar❤baz"
             USER  {0}""").format(NON_ASCII)
         expected = json.dumps([{"COMMENT": "comment"},
-                               {"FROM": "base"},
-                               {"LABEL": "foo=\"bar baz\""},
+                               {"FROM": "base:❤"},
+                               {"LABEL": "foo=\"bar❤baz\""},
                                {"USER": "{0}".format(NON_ASCII)}])
         assert dfparser.json == expected
 
     def test_multistage_dockerfile(self, dfparser):
         dfparser.content = dedent("""\
             From builder:image AS builder
-            RUN compile to /spam/eggs
+            RUN compile to /spam/eggs/❤
 
             FROM base
-            COPY --from=builder /spam/eggs /usr/bin/eggs
+            COPY --from=builder /spam/eggs/❤ /usr/bin/eggs
             """)
         expected = [
             {
@@ -212,10 +212,10 @@ class TestDockerfileParser(object):
                 'content': 'From builder:image AS builder\n',
             }, {
                 'instruction': 'RUN',
-                'value': 'compile to /spam/eggs',
+                'value': 'compile to /spam/eggs/❤',
                 'startline': 1,
                 'endline': 1,
-                'content': 'RUN compile to /spam/eggs\n',
+                'content': 'RUN compile to /spam/eggs/❤\n',
             }, {
                 'instruction': 'FROM',
                 'value': 'base',
@@ -224,10 +224,10 @@ class TestDockerfileParser(object):
                 'content': 'FROM base\n',
             }, {
                 'instruction': 'COPY',
-                'value': '--from=builder /spam/eggs /usr/bin/eggs',
+                'value': '--from=builder /spam/eggs/❤ /usr/bin/eggs',
                 'startline': 4,
                 'endline': 4,
-                'content': 'COPY --from=builder /spam/eggs /usr/bin/eggs\n',
+                'content': 'COPY --from=builder /spam/eggs/❤ /usr/bin/eggs\n',
             },
         ]
         assert dfparser.structure == expected
@@ -237,13 +237,13 @@ class TestDockerfileParser(object):
     def test_multistage_dockerfile_labels(self, dfparser):
         dfparser.content = dedent("""\
             From builder:image AS builder
-            LABEL "spam=baked beans"
+            LABEL "spam=baked❤beans"
 
             FROM base
-            LABEL "eggs=bacon"
+            LABEL "eggs=bacon❤"
             """)
         # only labels from final stage should count
-        assert dfparser.labels == {'eggs': 'bacon'}
+        assert dfparser.labels == {'eggs': 'bacon❤'}
 
     def test_get_baseimg_from_df(self, dfparser):
         dfparser.lines = ["From fedora:latest\n",
@@ -253,7 +253,7 @@ class TestDockerfileParser(object):
 
     def test_get_parent_env(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
-        p_env = {"bar": "baz"}
+        p_env = {"bar": "baz❤"}
         df1 = DockerfileParser(tmpdir_path, env_replace=True, parent_env=p_env)
         df1.lines = [
             "FROM parent\n",
@@ -265,9 +265,9 @@ class TestDockerfileParser(object):
         # ENVs defined in *this* Dockerfile as we're parsing the Dockerfile and
         # the parent_env is only to satisfy use of inherited ENVs.
         assert len(df1.envs) == 1
-        assert df1.envs.get('foo') == 'baz'
+        assert df1.envs.get('foo') == 'baz❤'
         assert len(df1.labels) == 1
-        assert df1.labels.get('label') == 'baz baz'
+        assert df1.labels.get('label') == 'baz❤ baz❤'
 
     def test_get_parent_env_from_scratch(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
@@ -294,6 +294,8 @@ class TestDockerfileParser(object):
         ('"name12"=12 \ \n   "name13"=13', {'name12': '12', 'name13': '13'}),
         ('name14=1\ 4', {'name14': '1 4'}),
         ('name15="with = in value"', {'name15': 'with = in value'}),
+        ('name16=❤', {'name16': '❤'}),
+        ('name❤=❤', {'name❤': '❤'}),
         # old syntax (without =)
         ('name101 101', {'name101': '101'}),
         ('name102 1 02', {'name102': '1 02'}),
@@ -304,6 +306,8 @@ class TestDockerfileParser(object):
         ('name107 1 0\ 7', {'name107': '1 0 7'}),
         ('name108 "with = in value"', {'name108': 'with = in value'}),
         ('name109 "\\"quoted\\""', {'name109': '"quoted"'}),
+        ('name110 ❤', {'name110': '❤'}),
+        ('name1❤ ❤', {'name1❤': '❤'}),
     ])
     def test_get_instructions_from_df(self, dfparser, instruction, instr_value,
                                       expected):
@@ -379,8 +383,8 @@ class TestDockerfileParser(object):
         assert dfparser.content.count('FROM') == 4
 
     def test_modify_instruction(self, dfparser):
-        FROM = ('ubuntu', 'fedora:latest')
-        CMD = ('old cmd', 'new command')
+        FROM = ('ubuntu', 'fedora:❤')
+        CMD = ('old❤cmd', 'new❤command')
         df_content = dedent("""\
             FROM {0}
             CMD {1}""").format(FROM[0], CMD[0])
@@ -405,7 +409,7 @@ class TestDockerfileParser(object):
         UPDATED_BASE_CMD = '/code/run-main-actors'
 
         df_content = dedent("""\
-            ARG  CODE_VERSION=latest
+            ARG  CODE_VERSION=latest.❤
             FROM {0}
             CMD {1}
 
@@ -492,6 +496,18 @@ class TestDockerfileParser(object):
         (['a b\n',
           'x="y z"\n'],
          'x',
+         ['a b\n']),
+
+        # Simple remove unicode
+        (['a b\n',
+          'x="y ❤"\n'],
+         'x',
+         ['a b\n']),
+
+        # Simple remove unicode
+        (['a b\n',
+          '❤="y z"\n'],
+         '❤',
          ['a b\n']),
 
         #  Remove first of two instructions on the same line
@@ -642,11 +658,13 @@ class TestDockerfileParser(object):
         ('${V}', 'v'),
         ('${V}-foo', 'v-foo'),
         ('$V-{foo}', 'v-{foo}'),
+        ('$V-❤', 'v-❤'),
         ('$VS', 'spam maps'),
 
         # These should not be substituted, only dequoted
         ("'$V'", "$V"),
         ("\\$V", "$V"),
+        ("\\$V❤", "$V❤"),
 
         # Try to trip up the parser
         ('\\"$V', '"v'),
@@ -670,6 +688,7 @@ class TestDockerfileParser(object):
         ('$V-foo', '$V-foo'),
         ('"$V-foo"', '$V-foo'),
         ('"$V"-foo', '$V-foo'),
+        ('"$V"-❤', '$V-❤'),
     ])
     def test_env_noreplace(self, dfparser, label, expected, separator):
         """
@@ -702,23 +721,23 @@ class TestDockerfileParser(object):
     def test_env_multistage(self, dfparser):
         dfparser.content = dedent("""\
             FROM stuff
-            ENV a=keep b=keep
+            ENV a=keep❤ b=keep❤
 
             FROM base
-            ENV a=delete
+            ENV a=delete❤
             RUN something
             """)
 
-        dfparser.envs['a'] = "changed"
+        dfparser.envs['a'] = "changed❤"
         del dfparser.envs['a']
-        dfparser.envs['b'] = "new"
+        dfparser.envs['b'] = "new❤"
 
         lines = dfparser.lines
         assert "ENV" in lines[1]
-        assert "a=keep" in lines[1]
-        assert "b=new" not in lines[1]
-        assert "a=delete" not in dfparser.content
-        assert "b=new" in lines[-1]
+        assert "a=keep❤" in lines[1]
+        assert "b=new❤" not in lines[1]
+        assert "a=delete❤" not in dfparser.content
+        assert "b='new❤'" in lines[-1]  # unicode quoted
 
     @pytest.mark.xfail
     @pytest.mark.parametrize(('label', 'expected'), [
@@ -748,26 +767,26 @@ class TestDockerfileParser(object):
         dfparser.content = dedent("""\
             FROM fedora:25
 
-            {0} multi.label1="value1" \\
-                  multi.label2="value2" \\
-                  other="value3"
+            {0} multi.label❤1="value❤1" \\
+                  multi.label❤2="value❤2" \\
+                  other="value❤3"
 
             {0} 2multi.label1="othervalue1" 2multi.label2="othervalue2" other="othervalue3"
 
             {0} "com.example.vendor"="ACME Incorporated"
             {0} com.example.label-with-value="foo"
-            {0} version="1.0"
-            {0} description="This text illustrates \\
+            {0} version="1.0.❤"
+            {0} description="This text illustrates ❤ \\
             that label-values can span multiple lines."
-            {0} key="with = in the value"
+            {0} key="with = in the value❤"
             """).format(instruction)
 
         c = dfparser.context_structure
 
         assert c[1].get_line_value(context_type=instruction) == {
-            "multi.label1": "value1",
-            "multi.label2": "value2",
-            "other": "value3"
+            "multi.label❤1": "value❤1",
+            "multi.label❤2": "value❤2",
+            "other": "value❤3"
         }
 
         assert c[2].get_line_value(context_type=instruction) == {
@@ -785,30 +804,30 @@ class TestDockerfileParser(object):
         }
 
         assert c[5].get_line_value(context_type=instruction) == {
-            "version": "1.0"
+            "version": "1.0.❤"
         }
 
         assert c[6].get_line_value(context_type=instruction) == {
-            "description": "This text illustrates that label-values can span multiple lines."
+            "description": "This text illustrates ❤ that label-values can span multiple lines."
         }
 
         assert c[7].get_line_value(context_type=instruction) == {
-            "key": "with = in the value"
+            "key": "with = in the value❤"
         }
 
     def test_context_structure(self, dfparser, instruction):
         dfparser.content = dedent("""\
             FROM fedora:25
 
-            {0} multi.label1="value1" \\
-                  multi.label2="value2" \\
-                  other="value3"
+            {0} multi.label❤1="value❤1" \\
+                  multi.label❤2="value❤2" \\
+                  other="value❤3"
 
             {0} 2multi.label1="othervalue1" 2multi.label2="othervalue2" other="othervalue3"
 
             {0} "com.example.vendor"="ACME Incorporated"
             {0} com.example.label-with-value="foo"
-            {0} version="1.0"
+            {0} version="1.0.❤"
             {0} description="This text illustrates \\
             that label-values can span multiple lines."
             """).format(instruction)
@@ -816,22 +835,22 @@ class TestDockerfileParser(object):
         c = dfparser.context_structure
 
         assert c[1].get_values(context_type=instruction) == {
-            "multi.label1": "value1",
-            "multi.label2": "value2",
-            "other": "value3"
+            "multi.label❤1": "value❤1",
+            "multi.label❤2": "value❤2",
+            "other": "value❤3"
         }
 
         assert c[2].get_values(context_type=instruction) == {
-            "multi.label1": "value1",
-            "multi.label2": "value2",
+            "multi.label❤1": "value❤1",
+            "multi.label❤2": "value❤2",
             "other": "othervalue3",
             "2multi.label1": "othervalue1",
             "2multi.label2": "othervalue2"
         }
 
         assert c[3].get_values(context_type=instruction) == {
-            "multi.label1": "value1",
-            "multi.label2": "value2",
+            "multi.label❤1": "value❤1",
+            "multi.label❤2": "value❤2",
             "other": "othervalue3",
             "2multi.label1": "othervalue1",
             "2multi.label2": "othervalue2",
@@ -839,8 +858,8 @@ class TestDockerfileParser(object):
         }
 
         assert c[4].get_values(context_type=instruction) == {
-            "multi.label1": "value1",
-            "multi.label2": "value2",
+            "multi.label❤1": "value❤1",
+            "multi.label❤2": "value❤2",
             "other": "othervalue3",
             "2multi.label1": "othervalue1",
             "2multi.label2": "othervalue2",
@@ -849,24 +868,24 @@ class TestDockerfileParser(object):
         }
 
         assert c[5].get_values(context_type=instruction) == {
-            "multi.label1": "value1",
-            "multi.label2": "value2",
+            "multi.label❤1": "value❤1",
+            "multi.label❤2": "value❤2",
             "other": "othervalue3",
             "2multi.label1": "othervalue1",
             "2multi.label2": "othervalue2",
             "com.example.vendor": "ACME Incorporated",
             "com.example.label-with-value": "foo",
-            "version": "1.0"
+            "version": "1.0.❤"
         }
 
-        assert c[6].get_values(context_type=instruction) == {"multi.label1": "value1",
-                                                             "multi.label2": "value2",
+        assert c[6].get_values(context_type=instruction) == {"multi.label❤1": "value❤1",
+                                                             "multi.label❤2": "value❤2",
                                                              "other": "othervalue3",
                                                              "2multi.label1": "othervalue1",
                                                              "2multi.label2": "othervalue2",
                                                              "com.example.vendor": "ACME Incorporated",
                                                              "com.example.label-with-value": "foo",
-                                                             "version": "1.0",
+                                                             "version": "1.0.❤",
                                                              "description": "This text illustrates that label-values can span multiple lines."
                                                              }
 
@@ -874,45 +893,45 @@ class TestDockerfileParser(object):
         dfparser.content = dedent("""\
             FROM fedora:25
 
-            {0} key=value
+            {0} key=value❤
             RUN touch /tmp/a
-            {0} key2=value2""").format(instruction)
+            {0} key2=value2❤""").format(instruction)
 
         c = dfparser.context_structure
         assert c[0].get_values(context_type=instruction) == {}
-        assert c[1].get_values(context_type=instruction) == {"key": "value"}
-        assert c[2].get_values(context_type=instruction) == {"key": "value"}
-        assert c[3].get_values(context_type=instruction) == {"key": "value",
-                                                             "key2": "value2"}
+        assert c[1].get_values(context_type=instruction) == {"key": "value❤"}
+        assert c[2].get_values(context_type=instruction) == {"key": "value❤"}
+        assert c[3].get_values(context_type=instruction) == {"key": "value❤",
+                                                             "key2": "value2❤"}
 
     def test_context_structure_mixed_env_label(self, dfparser):
         dfparser.content = dedent("""\
             FROM fedora:25
 
-            ENV key=value
+            ENV key=value❤
             RUN touch /tmp/a
-            LABEL key2=value2""")
+            LABEL key2=value2❤""")
         c = dfparser.context_structure
 
         assert c[0].get_values(context_type="ENV") == {}
         assert c[0].get_values(context_type="LABEL") == {}
 
-        assert c[1].get_values(context_type="ENV") == {"key": "value"}
+        assert c[1].get_values(context_type="ENV") == {"key": "value❤"}
         assert c[1].get_values(context_type="LABEL") == {}
 
-        assert c[2].get_values(context_type="ENV") == {"key": "value"}
+        assert c[2].get_values(context_type="ENV") == {"key": "value❤"}
         assert c[2].get_values(context_type="LABEL") == {}
 
-        assert c[3].get_values(context_type="ENV") == {"key": "value"}
-        assert c[3].get_values(context_type="LABEL") == {"key2": "value2"}
+        assert c[3].get_values(context_type="ENV") == {"key": "value❤"}
+        assert c[3].get_values(context_type="LABEL") == {"key2": "value2❤"}
 
     def test_expand_concatenated_variables(self, dfparser):
         dfparser.content = dedent("""\
             FROM scratch
             ENV NAME=name VER=1
-            LABEL component="$NAME$VER"
+            LABEL component="$NAME$VER❤"
         """)
-        assert dfparser.labels['component'] == 'name1'
+        assert dfparser.labels['component'] == 'name1❤'
 
     def test_label_env_key(self, dfparser):
         """
@@ -931,6 +950,7 @@ class TestDockerfileParser(object):
 
     @pytest.mark.parametrize('label_value, bad_keyval, envs', [
         ('a=b c', 'c', None),
+        ('a=b ❤', '❤', None),
         # if variable substitution was done too early, this could be an issue
         ('a=1 $CHEEKY_VARIABLE', '$CHEEKY_VARIABLE', {'CHEEKY_VARIABLE': 'b=2'})
     ])
@@ -952,8 +972,10 @@ class TestDockerfileParser(object):
                 dfparser.labels
             elif action == 'set':
                 dfparser.labels = {}
-
-        msg = str(exc_info.value)
+        if six.PY2:
+            msg = exc_info.value.message
+        else:
+            msg = str(exc_info.value)
         assert msg == ('Syntax error - can\'t find = in "{word}". '
                        'Must be of the form: name=value'
                        .format(word=bad_keyval))
@@ -961,22 +983,22 @@ class TestDockerfileParser(object):
     def test_add_lines_stages(self, dfparser):
         dfparser.content = dedent("""\
             From builder
-            CMD xyz
+            CMD xyz ❤
             From base
             LABEL a=b c=d
             ENV h i
             """)
-        dfparser.add_lines("something new", all_stages=True)
-        assert "something new" in dfparser.lines[2]
-        assert "something new" in dfparser.lines[-1]
-        assert len([line for line in dfparser.lines if "something new" in line]) == 2
+        dfparser.add_lines("something new ❤", all_stages=True)
+        assert "something new ❤" in dfparser.lines[2]
+        assert "something new ❤" in dfparser.lines[-1]
+        assert len([line for line in dfparser.lines if "something new ❤" in line]) == 2
         assert len(dfparser.lines) == 7
 
     @pytest.mark.parametrize('at_start', [True, False])
     def test_add_lines_stages_skip_scratch(self, dfparser, at_start):
         dfparser.content = dedent("""\
             From builder
-            CMD xyz
+            CMD xyz ❤
             From scratch
             LABEL type=scratch
             From base
@@ -985,38 +1007,38 @@ class TestDockerfileParser(object):
             From scratch
             LABEL type=scratch2
             """)
-        dfparser.add_lines("something new", all_stages=True, skip_scratch=True, at_start=at_start)
+        dfparser.add_lines("something new ❤", all_stages=True, skip_scratch=True, at_start=at_start)
 
         if at_start:
-            assert "something new" in dfparser.lines[1]
-            assert "something new" in dfparser.lines[6]
+            assert "something new ❤" in dfparser.lines[1]
+            assert "something new ❤" in dfparser.lines[6]
         else:
-            assert "something new" in dfparser.lines[2]
-            assert "something new" in dfparser.lines[8]
-        assert len([line for line in dfparser.lines if "something new" in line]) == 2
+            assert "something new ❤" in dfparser.lines[2]
+            assert "something new ❤" in dfparser.lines[8]
+        assert len([line for line in dfparser.lines if "something new ❤" in line]) == 2
         assert len(dfparser.lines) == 11
 
     def test_add_lines_stage_edge(self, dfparser):
-        dfparser.content = "# no from or newline"
-        dfparser.add_lines("begin with new", at_start=True)
-        dfparser.add_lines("end with new")
-        assert "begin with new" in dfparser.lines[0]
-        assert "end with new" in dfparser.lines[2]
+        dfparser.content = "# no from or newline ❤"
+        dfparser.add_lines("begin with new ❤", at_start=True)
+        dfparser.add_lines("end with new ❤")
+        assert "begin with new ❤" in dfparser.lines[0]
+        assert "end with new ❤" in dfparser.lines[2]
 
     @pytest.mark.parametrize(('anchor', 'raises'), [
         (
             3, None
         ),
         (
-            'CMD xyz\n', None
+            'CMD xyz ❤\n', None
         ),
         (
             dict(
-                content='CMD xyz\n',
+                content='CMD xyz ❤\n',
                 startline=3,
                 endline=3,
                 instruction='CMD',
-                value='xyz'
+                value='xyz ❤'
             ),
             None
         ),
@@ -1039,81 +1061,81 @@ class TestDockerfileParser(object):
     def test_add_lines_at(self, dfparser, anchor, raises):
         dfparser.content = dedent("""\
             From builder
-            CMD xyz
+            CMD xyz ❤
             LABEL a=b c=d
-            CMD xyz
+            CMD xyz ❤
             """)
 
         if raises:
             with pytest.raises(raises):
-                dfparser.add_lines_at(anchor, "# something new")
+                dfparser.add_lines_at(anchor, "# something new ❤")
             return
 
-        dfparser.add_lines_at(anchor, "# something new")
-        assert "something new" in dfparser.content
-        assert "something new" not in dfparser.lines[1]
-        assert "something new" in dfparser.lines[3]
+        dfparser.add_lines_at(anchor, "# something new ❤")
+        assert "something new ❤" in dfparser.content
+        assert "something new ❤" not in dfparser.lines[1]
+        assert "something new ❤" in dfparser.lines[3]
         assert "CMD" in dfparser.lines[4]
 
     @pytest.mark.parametrize('anchor', [
         1,
-        'CMD xyz\n',
+        'CMD xyz ❤\n',
         dict(
-            content='CMD xyz\n',
+            content='CMD xyz ❤\n',
             startline=1,
             endline=1,
             instruction='CMD',
-            value='xyz'
+            value='xyz ❤'
         ),
     ])
     def test_replace_lines_at(self, dfparser, anchor):
         dfparser.content = dedent("""\
             From builder
-            CMD xyz
+            CMD xyz ❤
             LABEL a=b c=d
             """)
 
-        dfparser.add_lines_at(anchor, "# something new", replace=True)
-        assert "something new" in dfparser.lines[1]
+        dfparser.add_lines_at(anchor, "# something new ❤", replace=True)
+        assert "something new ❤" in dfparser.lines[1]
         assert "CMD" not in dfparser.content
 
     @pytest.mark.parametrize('anchor', [
         1,
-        'CMD xyz\n',
+        'CMD xyz ❤\n',
         dict(
-            content='CMD xyz\n',
+            content='CMD xyz ❤\n',
             startline=1,
             endline=1,
             instruction='CMD',
-            value='xyz'
+            value='xyz ❤'
         ),
     ])
     def test_add_lines_after(self, dfparser, anchor):
         dfparser.content = dedent("""\
             From builder
-            CMD xyz
+            CMD xyz ❤
             LABEL a=b c=d
             """)
 
-        dfparser.add_lines_at(anchor, "# something new", after=True)
-        assert "something new" in dfparser.lines[2]
+        dfparser.add_lines_at(anchor, "# something new ❤", after=True)
+        assert "something new ❤" in dfparser.lines[2]
         assert "CMD" in dfparser.lines[1]
         assert "LABEL" in dfparser.lines[3]
 
     def test_add_lines_at_edge(self, dfparser):
         dfparser.content = dedent("""\
             From builder
-            CMD xyz
-            LABEL a=b c=d""")  # no newline
-        dfparser.add_lines_at(2, "# something new", after=True)
+            CMD xyz ❤
+            LABEL a=b c=d e=❤""")  # no newline
+        dfparser.add_lines_at(2, "# something new ❤", after=True)
         assert "d#" not in dfparser.content
         assert 4 == len(dfparser.lines)
-        assert "something new" in dfparser.lines[3]
+        assert "something new ❤" in dfparser.lines[3]
 
     def test_add_lines_after_continuation(self, dfparser):
         dfparser.content = dedent("""\
             FROM builder
-            RUN touch foo; \\
+            RUN touch foo ❤; \\
                 touch bar
             """)
 
@@ -1122,7 +1144,7 @@ class TestDockerfileParser(object):
         dfparser.add_lines_at(fromline, "# something new", after=True)
         assert dfparser.lines == [
             "FROM builder\n",
-            "RUN touch foo; \\\n",
+            "RUN touch foo ❤; \\\n",
             "    touch bar\n",
             "# something new\n",
         ]
@@ -1131,15 +1153,15 @@ class TestDockerfileParser(object):
         dfparser.content = dedent("""\
             FROM builder
             RUN touch foo; \\
-                touch bar
+                touch bar ❤
             """)
 
         fromline = dfparser.structure[1]
         assert fromline['instruction'] == 'RUN'
-        dfparser.add_lines_at(fromline, "# something new", replace=True)
+        dfparser.add_lines_at(fromline, "# ❤ something new", replace=True)
         assert dfparser.lines == [
             "FROM builder\n",
-            "# something new\n",
+            "# ❤ something new\n",
         ]
 
     def test_remove_whitespace(self, tmpdir):
@@ -1151,8 +1173,8 @@ class TestDockerfileParser(object):
             fp.write('FROM scratch')
         tmpdir_path = str(tmpdir.realpath())
         df1 = DockerfileParser(tmpdir_path)
-        df1.labels['foo'] = 'bar'
+        df1.labels['foo'] = 'bar ❤'
 
         df2 = DockerfileParser(tmpdir_path, True)
         assert df2.baseimage == 'scratch'
-        assert df2.labels['foo'] == 'bar'
+        assert df2.labels['foo'] == 'bar ❤'
