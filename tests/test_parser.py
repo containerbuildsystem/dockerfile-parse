@@ -183,6 +183,24 @@ class TestDockerfileParser(object):
                                        'content': 'RUN command4 && \\\n    command5\n',
                                        'value': 'command4 &&     command5'}]
 
+    def test_invalid_dockerfile_structure(self, dfparser):
+        '''Invalid instruction is reserverd.'''
+        dfparser.content = dedent("""\
+            RUN apt-get update
+                apt-get install something
+            """)
+        assert dfparser.structure == [
+                                      {'instruction': 'RUN',
+                                       'startline': 0,
+                                       'endline': 0,
+                                       'content': 'RUN apt-get update\n',
+                                       'value': 'apt-get update'},
+                                      {'instruction': 'APT-GET',
+                                       'startline': 1,
+                                       'endline': 1,
+                                       'content': '    apt-get install something\n',
+                                       'value': 'install something'}]
+
     def test_dockerfile_json(self, dfparser):
         dfparser.content = dedent("""\
             # comment
