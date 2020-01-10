@@ -240,7 +240,7 @@ class DockerfileParser(object):
 
         instructions = []
         lineno = -1
-        insnre = re.compile(r'^\s*(\w+)\s+(.*)$')  # matched group is insn
+        insnre = re.compile(r'^\s*(\S+)\s+(.*)$')  # matched group is insn
         contre = re.compile(r'^.*\\\s*$')          # line continues?
         commentre = re.compile(r'^\s*#')           # line is a comment?
         
