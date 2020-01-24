@@ -70,6 +70,26 @@ class Envs(dict):
         self.parser.envs = dict(self)
 
 
+class Args(dict):
+    """
+    A class for allowing direct write access to Dockerfile args, e.g.:
+
+    parser.args['variable_name'] = 'value'
+    """
+
+    def __init__(self, args, parser):
+        super(Args, self).__init__(args)
+        self.parser = parser
+
+    def __delitem__(self, key):
+        super(Args, self).__delitem__(key)
+        self.parser.envs = dict(self)
+
+    def __setitem__(self, key, value):
+        super(Args, self).__setitem__(key, value)
+        self.parser.envs = dict(self)
+
+
 class DockerfileParser(object):
     def __init__(self, path=None,
                  cache_content=False,
@@ -243,7 +263,7 @@ class DockerfileParser(object):
         insnre = re.compile(r'^\s*(\S+)\s+(.*)$')  # matched group is insn
         contre = re.compile(r'^.*\\\s*$')          # line continues?
         commentre = re.compile(r'^\s*#')           # line is a comment?
-        
+
         in_continuation = False
         current_instruction = None
 
@@ -265,7 +285,7 @@ class DockerfileParser(object):
                     if not m:
                         continue
                     current_instruction = _create_instruction_dict(
-                        instruction=m.groups()[0].upper(), 
+                        instruction=m.groups()[0].upper(),
                         value=_rstrip_backslash(m.groups()[1])
                     )
                 else:
@@ -301,6 +321,10 @@ class DockerfileParser(object):
                 continue
             image, _ = image_from(instr['value'])
             if image is not None:
+                # replace any ARG keys with values
+                for key in self.args.keys():
+                    pattern = '\\$'+key+'|'+'\\${'+key+'}'
+                    image = re.sub(pattern, self.args[key], image)
                 parents.append(image)
         return parents
 
@@ -411,6 +435,14 @@ class DockerfileParser(object):
         """
         return self._instruction_getter('ENV', env_replace=self.env_replace)
 
+    @property
+    def args(self):
+        """
+        ARGs from Dockerfile
+        :return: dictionary of arg_var_name:value (value might be '')
+        """
+        return self._instruction_getter('ARG', env_replace=self.env_replace)
+
     def _instruction_getter(self, name, env_replace):
         """
         Get LABEL or ENV instructions with environment replacement
@@ -419,7 +451,8 @@ class DockerfileParser(object):
         :param env_replace: bool, whether to perform ENV substitution
         :return: Labels instance or Envs instance
         """
-        if name != 'LABEL' and name != 'ENV':
+        supported_instrs = ('LABEL', 'ENV', 'ARG')
+        if name not in supported_instrs:
             raise ValueError("Unsupported instruction '%s'", name)
         instructions = {}
         envs = {}
@@ -427,9 +460,8 @@ class DockerfileParser(object):
         for instruction_desc in self.structure:
             this_instruction = instruction_desc['instruction']
             if this_instruction == 'FROM':
-                instructions.clear()
                 envs = self.parent_env.copy()
-            elif this_instruction in (name, 'ENV'):
+            elif this_instruction in supported_instrs:
                 logger.debug("%s value: %r", name.lower(), instruction_desc['value'])
                 key_val_list = extract_labels_or_envs(env_replace=env_replace,
                                                       envs=envs,
@@ -442,7 +474,12 @@ class DockerfileParser(object):
                         envs[key] = value
 
         logger.debug("instructions: %r", instructions)
-        return Labels(instructions, self) if name == 'LABEL' else Envs(instructions, self)
+        if name == 'LABEL':
+            return Labels(instructions, self)
+        elif name == 'ENV':
+            return Envs(instructions, self)
+        else:
+            return Args(instructions, self)
 
     @labels.setter
     def labels(self, labels):
