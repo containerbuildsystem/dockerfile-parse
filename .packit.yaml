@@ -1,14 +1,5 @@
 # https://packit.dev/docs/configuration/
 
-specfile_path: python-dockerfile-parse.spec
-
-# to be copied to dist-git during an update
-synced_files:
-    - python-dockerfile-parse.spec
-    - .packit.yaml
-
-# name in upstream package repository/registry (e.g. in PyPI)
-upstream_project_name: dockerfile-parse
 # name of downstream (Fedora) RPM package
 downstream_package_name: python-dockerfile-parse
 
@@ -19,21 +10,11 @@ jobs:
 - job: propose_downstream
   trigger: release
   metadata:
-    dist-git-branch: master
-- job: propose_downstream
-  trigger: release
-  metadata:
-    dist-git-branch: f31
-- job: propose_downstream
-  trigger: release
-  metadata:
-    dist-git-branch: f30
+    dist-git-branch: fedora-all
 - job: copr_build
   trigger: pull_request
   metadata:
     targets:
-    - fedora-rawhide-x86_64
-    - fedora-31-x86_64
-    - fedora-30-x86_64
+    - fedora-all
     - epel-7-x86_64
     - rhelbeta-8-x86_64
