@@ -5,13 +5,13 @@ services:
 env:
   matrix:
     - ACTION=bandit
-      OS=fedora
-      OS_VERSION=29
+      OS=centos
+      OS_VERSION=7
       PYTHON_VERSION=2
       ENGINE=docker
     - ACTION=bandit
       OS=fedora
-      OS_VERSION=29
+      OS_VERSION=31
       PYTHON_VERSION=3
       ENGINE=docker
     - OS=centos
@@ -19,15 +19,11 @@ env:
       PYTHON_VERSION=2
       ENGINE=docker
     - OS=fedora
-      OS_VERSION=29
-      PYTHON_VERSION=2
-      ENGINE=docker
-    - OS=fedora
-      OS_VERSION=29
+      OS_VERSION=30
       PYTHON_VERSION=3
       ENGINE=docker
     - OS=fedora
-      OS_VERSION=30
+      OS_VERSION=31
       PYTHON_VERSION=3
       ENGINE=docker
 script:
