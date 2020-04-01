@@ -22,7 +22,7 @@ Release:        1%{?dist}
 Summary:        Python library for Dockerfile manipulation
 License:        BSD
 URL:            https://github.com/containerbuildsystem/dockerfile-parse
-Source0:        %{url}/archive/%{version}/%{srcname}-%{version}.tar.gz
+Source0:        https://github.com/containerbuildsystem/dockerfile-parse/archive/%{version}.tar.gz
 
 BuildArch:      noarch
 
@@ -71,7 +71,7 @@ Python 3 version.
 %endif #python3 pkg
 
 %prep
-%setup -q -n %{srcname}-%{version}
+%setup -q
 
 
 %build
