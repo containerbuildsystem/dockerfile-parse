@@ -1,0 +1,19 @@
+{
+  "plugins": [
+    "remark-preset-lint-markdown-style-guide",
+    "remark-lint-no-dead-urls",
+    "remark-lint-match-punctuation",
+    "remark-lint-mdash-style",
+    "remark-lint-no-chinese-punctuation-in-number",
+    "remark-lint-no-dead-urls",
+    "remark-lint-no-repeat-punctuation",
+    "remark-lint-emoji-limit",
+    "remark-lint-no-empty-sections",
+    "remark-lint-heading-length",
+    "remark-lint-heading-whitespace",
+    "remark-lint-are-links-valid",
+    "remark-lint-spaces-around-number",
+    "remark-lint-spaces-around-word",
+    "remark-lint-no-url-trailing-slash"
+  ]
+}

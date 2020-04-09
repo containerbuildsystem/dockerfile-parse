@@ -3,3 +3,4 @@ linters:
     max-line-length: 99
   shellcheck:
     shell: bash
+  remarklint:
