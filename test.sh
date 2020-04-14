@@ -94,6 +94,12 @@ case ${ACTION} in
   $RUN $PIP install bandit
   TEST_CMD="bandit-baseline -r dockerfile_parse -ll -ii"
   ;;
+"pylint")
+  setup_dfp
+  $RUN $PKG install -y "${PYTHON}-pylint"
+  PACKAGES='dockerfile_parse tests'
+  TEST_CMD="${PYTHON} -m pylint ${PACKAGES}"
+  ;;
 "markdownlint")
   $RUN gem install mdl
   TEST_CMD="mdl -g ."
