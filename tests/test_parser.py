@@ -96,14 +96,14 @@ class TestDockerfileParser(object):
                           "# comment \\\n",             # extra ws
                           "# with \\ \n",               # extra ws with a space
                           "# backslashes \\\\ \n",      # two backslashes
-                          "#no space after hash\n",       
-                          "# comment # with hash inside\n",      
+                          "#no space after hash\n",
+                          "# comment # with hash inside\n",
                           "RUN command1\n",
                           "RUN command2 && \\\n",
                           "    command3\n",
                           "RUN command4 && \\\n",
                           "# interrupt RUN\n",          # comment interrupting multi-line RUN
-                          "    command5\n",                        
+                          "    command5\n",
                         ]
 
         assert dfparser.structure == [

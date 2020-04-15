@@ -243,7 +243,7 @@ class DockerfileParser(object):
         insnre = re.compile(r'^\s*(\S+)\s+(.*)$')  # matched group is insn
         contre = re.compile(r'^.*\\\s*$')          # line continues?
         commentre = re.compile(r'^\s*#')           # line is a comment?
-        
+
         in_continuation = False
         current_instruction = None
 
@@ -265,7 +265,7 @@ class DockerfileParser(object):
                     if not m:
                         continue
                     current_instruction = _create_instruction_dict(
-                        instruction=m.groups()[0].upper(), 
+                        instruction=m.groups()[0].upper(),
                         value=_rstrip_backslash(m.groups()[1])
                     )
                 else:
