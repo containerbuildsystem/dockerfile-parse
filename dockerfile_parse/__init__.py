@@ -10,6 +10,7 @@ of the BSD license. See the LICENSE file for details.
 # This file is generated from template: rel-eng/version_init.template
 #
 
+from __future__ import absolute_import
 from .parser import DockerfileParser
 
 __version__ = "0.0.17"
