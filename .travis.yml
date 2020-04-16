@@ -26,6 +26,8 @@ env:
       OS_VERSION=31
       PYTHON_VERSION=3
       ENGINE=docker
+    - ACTION=markdownlint
+      ENGINE=docker
 script:
  - pip install coveralls
  - ./test.sh
