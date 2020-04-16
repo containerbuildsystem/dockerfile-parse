@@ -1,28 +1,26 @@
-dockerfile-parse
-====
+# dockerfile-parse
 
-[![Build Status](https://travis-ci.org/containerbuildsystem/dockerfile-parse.svg?branch=master)](https://travis-ci.org/containerbuildsystem/dockerfile-parse)
-[![Coverage Status](https://coveralls.io/repos/containerbuildsystem/dockerfile-parse/badge.svg?branch=master&service=github)](https://coveralls.io/github/containerbuildsystem/dockerfile-parse?branch=master)
+[![build status]][build status link]
+[![coverage status]][coverage status link]
 
 Python library for parsing Dockerfile files.
 
 ## Installation
 
-### from PyPI
-
-```
-$ pip install dockerfile-parse
-```
-
-
-### from git
-
-Clone this git repo and install dockerfile-parse using python installer:
+### From PyPI
 
 ```shell
-$ git clone https://github.com/containerbuildsystem/dockerfile-parse.git
-$ cd dockerfile-parse
-$ sudo pip install .
+pip install dockerfile-parse
+```
+
+### From git
+
+Clone this git repo and install using the python installer
+
+```shell
+git clone https://github.com/containerbuildsystem/dockerfile-parse.git
+cd dockerfile-parse
+sudo pip install .
 ```
 
 ## Usage
@@ -48,3 +46,8 @@ dfp.baseimage = 'centos:7'
 # Print the new Dockerfile with an updated FROM line:
 print(dfp.content)
 ```
+
+[build status]: https://travis-ci.org/containerbuildsystem/dockerfile-parse.svg?branch=master
+[build status link]: https://travis-ci.org/containerbuildsystem/dockerfile-parse
+[coverage status]: https://coveralls.io/repos/containerbuildsystem/dockerfile-parse/badge.svg?branch=master&service=github
+[coverage status link]: https://coveralls.io/github/containerbuildsystem/dockerfile-parse?branch=master
