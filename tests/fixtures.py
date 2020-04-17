@@ -29,8 +29,8 @@ def dfparser(tmpdir, request):
 
     use_fileobj, cache_content = request.param
     if use_fileobj:
-        file = six.BytesIO()
-        return DockerfileParser(fileobj=file, cache_content=cache_content)
+        fileobj = six.BytesIO()
+        return DockerfileParser(fileobj=fileobj, cache_content=cache_content)
     else:
         tmpdir_path = str(tmpdir.realpath())
         return DockerfileParser(path=tmpdir_path, cache_content=cache_content)

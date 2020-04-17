@@ -9,8 +9,8 @@ of the BSD license. See the LICENSE file for details.
 
 from __future__ import print_function, unicode_literals, absolute_import
 
-import shlex
 from io import StringIO
+from six import text_type
 
 from .constants import PY2
 
@@ -25,8 +25,11 @@ def b2u(string):
 
 def u2b(string):
     """ unicode to bytes"""
-    if ((PY2 and isinstance(string, unicode)) or
-        ((not PY2) and isinstance(string, str))):
+<<<<<<< HEAD
+    if isinstance(string, six.text_type):
+=======
+    if isinstance(string, text_type):
+>>>>>>> 96a082b... fix error
         return string.encode('utf-8')
     return string
 

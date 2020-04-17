@@ -734,7 +734,7 @@ class TestDockerfileParser(object):
                           "LABEL TEST={0}\n".format(label)]
         try:
             dfparser.labels['TEST']
-        except:
+        except KeyError:
             pass
 
     def test_env_multistage(self, dfparser):
@@ -1149,7 +1149,7 @@ class TestDockerfileParser(object):
             LABEL a=b c=d e=❤""")  # no newline
         dfparser.add_lines_at(2, "# something new ❤", after=True)
         assert "d#" not in dfparser.content
-        assert 4 == len(dfparser.lines)
+        assert len(dfparser.lines) == 4
         assert "something new ❤" in dfparser.lines[3]
 
     def test_add_lines_after_continuation(self, dfparser):
