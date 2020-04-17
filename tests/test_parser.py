@@ -25,8 +25,8 @@ from tests.fixtures import dfparser, instruction
 
 NON_ASCII = "žluťoučký"
 # flake8 does not understand fixtures:
-dfparser = dfparser
-instruction = instruction
+dfparser = dfparser  # pylint: disable=self-assigning-variable
+instruction = instruction  # pylint: disable=self-assigning-variable
 
 
 class TestDockerfileParser(object):
@@ -298,6 +298,7 @@ class TestDockerfileParser(object):
         assert not df1.envs
 
     @pytest.mark.parametrize(('instr_value', 'expected'), [
+        # pylint: disable=anomalous-backslash-in-string
         ('"name1"=\'value 1\' "name2"=myself name3=""',
          {'name1': 'value 1',
           'name2': 'myself',
@@ -989,7 +990,7 @@ class TestDockerfileParser(object):
         ]
         with pytest.raises(ValueError) as exc_info:
             if action == 'get':
-                dfparser.labels
+                dfparser.labels  # pylint: disable=pointless-statement
             elif action == 'set':
                 dfparser.labels = {}
         if six.PY2:
