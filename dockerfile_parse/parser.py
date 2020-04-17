@@ -234,7 +234,7 @@ class DockerfileParser(object):
 
         def _clean_comment_line(line):
             line = re.sub(r'^\s*#\s*', '', line)
-            line = re.sub('\n', '', line)
+            line = re.sub(r'\n', '', line)
             return line
 
 
@@ -420,7 +420,7 @@ class DockerfileParser(object):
         :return: Labels instance or Envs instance
         """
         if name != 'LABEL' and name != 'ENV':
-            raise ValueError("Unsupported instruction '%s'", name)
+            raise ValueError("Unsupported instruction '%s'" % name)
         instructions = {}
         envs = {}
 
@@ -628,7 +628,7 @@ class DockerfileParser(object):
         all_stages = kwargs.pop('all_stages', False)
         at_start = kwargs.pop('at_start', False)
         skip_scratch = kwargs.pop('skip_scratch', False)
-        assert not kwargs, "Unknown keyword argument(s): {0}".format(kwargs.keys())
+        assert not kwargs, "Unknown keyword argument(s): {0}".format(list(kwargs))
 
         froms = [
             instr for instr in self.structure
@@ -667,12 +667,12 @@ class DockerfileParser(object):
         replace = kwargs.pop('replace', False)
         after = kwargs.pop('after', False)
         assert not (after and replace)
-        assert not kwargs, "Unknown keyword argument(s): {0}".format(kwargs.keys())
+        assert not kwargs, "Unknown keyword argument(s): {0}".format(list(kwargs))
 
         # find the line number for the insertion
         df_lines = self.lines
         if isinstance(anchor, int):  # line number, just validate
-            assert anchor in range(len(df_lines))
+            assert 0 <= anchor < len(df_lines)
             if replace:
                 del df_lines[anchor]
         elif isinstance(anchor, dict):  # structure
