@@ -630,7 +630,8 @@ class TestDockerfileParser(object):
         # Simple case, '=' but no quotes
         ('Release=1', 'Release', '6', 'Release=6'),
         # '=' and quotes, with space in the value
-        ('"Name"=\'alpha alpha\' Version=1', 'Name', 'beta delta', '"Name"=\'beta delta\' Version=1'),
+        ('"Name"=\'alpha alpha\' Version=1',
+         'Name', 'beta delta', '"Name"=\'beta delta\' Version=1'),
         ('Name=foo', 'Name', 'new value', "Name='new value'"),
         # ' ' and quotes
         ('"Name" alpha alpha', 'Name', 'beta delta', "\"Name\" 'beta delta'"),
@@ -896,16 +897,17 @@ class TestDockerfileParser(object):
             "version": "1.0.❤"
         }
 
-        assert c[6].get_values(context_type=instruction) == {"multi.label❤1": "value❤1",
-                                                             "multi.label❤2": "value❤2",
-                                                             "other": "othervalue3",
-                                                             "2multi.label1": "othervalue1",
-                                                             "2multi.label2": "othervalue2",
-                                                             "com.example.vendor": "ACME Incorporated",
-                                                             "com.example.label-with-value": "foo",
-                                                             "version": "1.0.❤",
-                                                             "description": "This text illustrates that label-values can span multiple lines."
-                                                             }
+        assert c[6].get_values(context_type=instruction) == {
+            "multi.label❤1": "value❤1",
+            "multi.label❤2": "value❤2",
+            "other": "othervalue3",
+            "2multi.label1": "othervalue1",
+            "2multi.label2": "othervalue2",
+            "com.example.vendor": "ACME Incorporated",
+            "com.example.label-with-value": "foo",
+            "version": "1.0.❤",
+            "description": "This text illustrates that label-values can span multiple lines."
+        }
 
     def test_context_structure_mixed(self, dfparser, instruction):
         dfparser.content = dedent("""\
