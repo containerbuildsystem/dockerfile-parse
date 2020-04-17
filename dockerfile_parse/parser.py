@@ -228,7 +228,7 @@ class DockerfileParser(object):
                 'instruction': instruction,
                 'startline': lineno,
                 'endline': lineno,
-                'content': line,
+                'content': line,  # pylint: disable=undefined-loop-variable
                 'value': value
             }
 
@@ -271,10 +271,13 @@ class DockerfileParser(object):
                 else:
                     current_instruction['content'] += line
                     current_instruction['endline'] = lineno
+
+                    # pylint: disable=unsupported-assignment-operation
                     if current_instruction['value']:
                         current_instruction['value'] += _rstrip_backslash(line)
                     else:
                         current_instruction['value'] = _rstrip_backslash(line.lstrip())
+                    # pylint: enable=unsupported-assignment-operation
 
                 in_continuation = contre.match(line)
                 if not in_continuation and current_instruction is not None:

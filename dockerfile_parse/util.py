@@ -25,11 +25,7 @@ def b2u(string):
 
 def u2b(string):
     """ unicode to bytes"""
-<<<<<<< HEAD
-    if isinstance(string, six.text_type):
-=======
     if isinstance(string, text_type):
->>>>>>> 96a082b... fix error
         return string.encode('utf-8')
     return string
 
