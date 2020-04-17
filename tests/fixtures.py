@@ -15,7 +15,10 @@ import six
 from dockerfile_parse import DockerfileParser
 
 
-@pytest.fixture(params=[(use_fileobj, cache_content) for use_fileobj in [True, False] for cache_content in [True, False]])
+@pytest.fixture(
+    params=[(use_fileobj, cache_content)
+            for use_fileobj in [True, False]
+            for cache_content in [True, False]])
 def dfparser(tmpdir, request):
     """
 
