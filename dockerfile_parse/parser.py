@@ -233,7 +233,7 @@ class DockerfileParser(object):
             }
 
         def _clean_comment_line(line):
-            line = re.sub('^\s*#\s*', '', line)
+            line = re.sub(r'^\s*#\s*', '', line)
             line = re.sub('\n', '', line)
             return line
 
