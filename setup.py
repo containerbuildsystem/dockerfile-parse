@@ -36,7 +36,7 @@ with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='dockerfile-parse',
-    version='0.0.16',
+    version='0.0.17',
     description='Python library for Dockerfile manipulation',
     long_description=long_description,
     long_description_content_type='text/markdown',
