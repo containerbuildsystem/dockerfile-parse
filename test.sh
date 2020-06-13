@@ -71,6 +71,7 @@ function setup_dfp() {
 
   # CentOS needs to have setuptools updates to make pytest-cov work
   if [[ $OS != "fedora" ]]; then
+    $RUN $PIP install -U pip
     $RUN $PIP install -U setuptools
 
     # Watch out for https://github.com/pypa/setuptools/issues/937

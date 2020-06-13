@@ -36,7 +36,7 @@ def dfparser(tmpdir, request):
         return DockerfileParser(path=tmpdir_path, cache_content=cache_content)
 
 
-@pytest.fixture(params=['LABEL', 'ENV'])
+@pytest.fixture(params=['LABEL', 'ENV', 'ARG'])
 def instruction(request):
     """
     Parametrized fixture which enables to run a test once for each instruction in params
