@@ -21,6 +21,7 @@ from textwrap import dedent
 from dockerfile_parse import DockerfileParser
 from dockerfile_parse.parser import image_from
 from dockerfile_parse.constants import COMMENT_INSTRUCTION
+from dockerfile_parse.util import b2u, u2b, Context
 from tests.fixtures import dfparser, instruction
 
 NON_ASCII = "žluťoučký"
@@ -51,6 +52,24 @@ class TestDockerfileParser(object):
         assert spec_version == module_version
         assert setup_py_version == module_version
 
+    def test_util_b2u(self):
+        assert isinstance(b2u(u'string'), six.text_type)
+        assert isinstance(b2u(b'byte'), six.text_type)
+
+    def test_util_u2b(self):
+        assert isinstance(u2b(u'string'), six.binary_type)
+        assert isinstance(u2b(b'byte'), six.binary_type)
+
+    def test_util_context_exceptions(self):
+        context = Context()
+        with pytest.raises(ValueError):
+            context.get_values('FOO')
+        with pytest.raises(ValueError):
+            context.get_line_value('FOO')
+        with pytest.raises(ValueError):
+            context.set_line_value('FOO', {})
+
+
     def test_dockerfileparser(self, dfparser, tmpdir):
         df_content = dedent("""\
             FROM fedora
@@ -69,12 +88,38 @@ class TestDockerfileParser(object):
         assert dfparser.lines == df_lines
         assert [isinstance(line, six.text_type) for line in dfparser.lines]
 
-        with open(os.path.join(str(tmpdir), 'Dockerfile'), 'wb') as fp:
+        dockerfile = os.path.join(str(tmpdir), 'Dockerfile')
+        with open(dockerfile, 'wb') as fp:
             fp.write(df_content.encode('utf-8'))
-        dfparser = DockerfileParser(str(tmpdir))
+        dfparser = DockerfileParser(dockerfile)
         assert dfparser.content == df_content
         assert dfparser.lines == df_lines
         assert [isinstance(line, six.text_type) for line in dfparser.lines]
+
+    def test_dockerfileparser_exceptions(self, tmpdir):
+        df_content = dedent("""\
+            FROM fedora
+            LABEL label={0}""".format(NON_ASCII))
+        df_lines = ["FROM fedora\n", "LABEL label={0}".format(NON_ASCII)]
+
+        dfp = DockerfileParser(os.path.join(str(tmpdir), 'no-directory'))
+        with pytest.raises(IOError):
+            assert dfp.content
+        with pytest.raises(IOError):
+            dfp.content = df_content
+        with pytest.raises(IOError):
+            assert dfp.lines
+        with pytest.raises(IOError):
+            dfp.lines = df_lines
+
+    def test_internal_exceptions(self, tmpdir):
+        dfp = DockerfileParser(str(tmpdir))
+        with pytest.raises(ValueError):
+            dfp._instruction_getter('FOO', env_replace=True)
+        with pytest.raises(ValueError):
+            dfp._instructions_setter('FOO', {})
+        with pytest.raises(ValueError):
+            dfp._modify_instruction_label_env('FOO', 'key', 'value')
 
     def test_constructor_cache(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
@@ -266,8 +311,63 @@ class TestDockerfileParser(object):
     def test_get_baseimg_from_df(self, dfparser):
         dfparser.lines = ["From fedora:latest\n",
                           "LABEL a b\n"]
-        base_img = dfparser.baseimage
-        assert base_img.startswith('fedora')
+        assert dfparser.baseimage == 'fedora:latest'
+
+    def test_get_baseimg_from_arg(self, dfparser):
+        dfparser.lines = ["ARG BASE=fedora:latest\n",
+                          "FROM $BASE\n",
+                          "LABEL a b\n"]
+        assert dfparser.baseimage == 'fedora:latest'
+
+    def test_get_baseimg_from_build_arg(self, tmpdir):
+        tmpdir_path = str(tmpdir.realpath())
+        b_args = {"BASE": "fedora:latest"}
+        dfp = DockerfileParser(tmpdir_path, env_replace=True, build_args=b_args)
+        dfp.lines = ["ARG BASE=centos:latest\n",
+                     "FROM $BASE\n",
+                     "LABEL a b\n"]
+        assert dfp.baseimage == 'fedora:latest'
+        assert not dfp.args
+
+    def test_set_no_baseimage(self, dfparser):
+        dfparser.lines = []
+        with pytest.raises(RuntimeError):
+            dfparser.baseimage = 'fedora:latest'
+        assert not dfparser.baseimage
+
+    def test_get_build_args(self, tmpdir):
+        tmpdir_path = str(tmpdir.realpath())
+        b_args = {"bar": "baz❤"}
+        df1 = DockerfileParser(tmpdir_path, env_replace=True, build_args=b_args)
+        df1.lines = [
+            "ARG foo=\"baz❤\"\n",
+            "ARG not=\"used\"\n",
+            "FROM parent\n",
+            "ARG foo\n",
+            "ARG bar\n",
+            "LABEL label=\"$foo $bar\"\n"
+        ]
+
+        # Even though we inherit an ARG, this .args count should only be for the
+        # ARGs defined in *this* Dockerfile as we're parsing the Dockerfile and
+        # the build_args is only to satisfy use of this build.
+        assert len(df1.args) == 2
+        assert df1.args.get('foo') == 'baz❤'
+        assert df1.args.get('bar') == 'baz❤'
+        assert len(df1.labels) == 1
+        assert df1.labels.get('label') == 'baz❤ baz❤'
+
+    def test_get_build_args_from_scratch(self, tmpdir):
+        tmpdir_path = str(tmpdir.realpath())
+        b_args = {"bar": "baz"}
+        df1 = DockerfileParser(tmpdir_path, env_replace=True, build_args=b_args)
+        df1.lines = [
+            "FROM scratch\n",
+        ]
+
+        assert not df1.args
+        assert not (df1.args == ['bar', 'baz'])
+        assert hash(df1.args)
 
     def test_get_parent_env(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
@@ -296,6 +396,8 @@ class TestDockerfileParser(object):
         ]
 
         assert not df1.envs
+        assert not (df1.envs == ['bar', 'baz'])
+        assert hash(df1.envs)
 
     @pytest.mark.parametrize(('instr_value', 'expected'), [
         # pylint: disable=anomalous-backslash-in-string
@@ -310,8 +412,8 @@ class TestDockerfileParser(object):
         ('"name9"="asd \\  \\n qwe"', {'name9': 'asd \\  \\n qwe'}),
         ('"name10"="{0}"'.format(NON_ASCII), {'name10': NON_ASCII}),
         ('"name1 1"=1', {'name1 1': '1'}),
-        ('"name12"=12 \ \n   "name13"=13', {'name12': '12', 'name13': '13'}),
-        ('name14=1\ 4', {'name14': '1 4'}),
+        ('"name12"=12 \\ \n   "name13"=13', {'name12': '12', 'name13': '13'}),
+        ('name14=1\\ 4', {'name14': '1 4'}),
         ('name15="with = in value"', {'name15': 'with = in value'}),
         ('name16=❤', {'name16': '❤'}),
         ('name❤=❤', {'name❤': '❤'}),
@@ -322,7 +424,7 @@ class TestDockerfileParser(object):
         ('name104 "1"  04', {'name104': '1  04'}),
         ('name105 1 \'05\'', {'name105': '1 05'}),
         ('name106 1 \'0\'   6', {'name106': '1 0   6'}),
-        ('name107 1 0\ 7', {'name107': '1 0 7'}),
+        ('name107 1 0\\ 7', {'name107': '1 0 7'}),
         ('name108 "with = in value"', {'name108': 'with = in value'}),
         ('name109 "\\"quoted\\""', {'name109': '"quoted"'}),
         ('name110 ❤', {'name110': '❤'}),
@@ -335,6 +437,10 @@ class TestDockerfileParser(object):
             instructions = dfparser.labels
         elif instruction == 'ENV':
             instructions = dfparser.envs
+        elif instruction == 'ARG':
+            instructions = dfparser.args
+        else:
+            assert False, 'Unexpected instruction: {0}'.format(instruction)
 
         assert instructions == expected
 
@@ -419,6 +525,7 @@ class TestDockerfileParser(object):
         assert dfparser.cmd == CMD[1]
 
     def test_modify_from_multistage(self, dfparser):
+        CODE_VERSION = 'latest.❤'
         BASE_FROM = 'base:${CODE_VERSION}'
         BUILDER_FROM = 'builder:${CODE_VERSION}'
         UPDATED_BASE_FROM = 'bass:${CODE_VERSION}'
@@ -428,12 +535,12 @@ class TestDockerfileParser(object):
         UPDATED_BASE_CMD = '/code/run-main-actors'
 
         df_content = dedent("""\
-            ARG  CODE_VERSION=latest.❤
-            FROM {0}
-            CMD {1}
+            ARG  CODE_VERSION={0}
+            FROM {1}
+            CMD {2}
 
-            FROM {2}
-            """).format(BUILDER_FROM, BUILDER_CMD, BASE_FROM)
+            FROM {3}
+            """).format(CODE_VERSION, BUILDER_FROM, BUILDER_CMD, BASE_FROM)
 
         INDEX_FIRST_FROM = 1
         INDEX_SECOND_FROM = 4
@@ -443,12 +550,12 @@ class TestDockerfileParser(object):
 
         dfparser.content = df_content
 
-        assert dfparser.baseimage == BASE_FROM
+        assert dfparser.baseimage == 'base:{0}'.format(CODE_VERSION)
         assert dfparser.lines[INDEX_FIRST_FROM].strip() == 'FROM {0}'.format(BUILDER_FROM)
         assert dfparser.lines[INDEX_SECOND_FROM].strip() == 'FROM {0}'.format(BASE_FROM)
 
         dfparser.baseimage = UPDATED_BASE_FROM  # should update only last FROM
-        assert dfparser.baseimage == UPDATED_BASE_FROM
+        assert dfparser.baseimage == 'bass:{0}'.format(CODE_VERSION)
         assert dfparser.lines[INDEX_FIRST_FROM].strip() == 'FROM {0}'.format(BUILDER_FROM)
         assert dfparser.lines[INDEX_SECOND_FROM].strip() == 'FROM {0}'.format(UPDATED_BASE_FROM)
 
@@ -469,6 +576,8 @@ class TestDockerfileParser(object):
             LABEL x=\"y z\"
             ENV h i
             ENV j='k' l=m
+            ARG a b
+            ARG c='d' e=f
             """)
         dfparser.content = df_content
 
@@ -478,6 +587,8 @@ class TestDockerfileParser(object):
         assert dfparser.baseimage is None
 
         dfparser._add_instruction('FROM', 'fedora')
+        assert dfparser.baseimage == 'fedora'
+        dfparser._delete_instructions('FROM', 'centos')
         assert dfparser.baseimage == 'fedora'
         dfparser._delete_instructions('FROM', 'fedora')
         assert dfparser.baseimage is None
@@ -492,6 +603,12 @@ class TestDockerfileParser(object):
         assert len(dfparser.envs) == 4
         assert dfparser.envs.get('Name') == 'self'
         dfparser._delete_instructions('ENV')
+        assert dfparser.envs == {}
+
+        dfparser._add_instruction('ARG', ('Name', 'self'))
+        assert len(dfparser.args) == 4
+        assert dfparser.args.get('Name') == 'self'
+        dfparser._delete_instructions('ARG')
         assert dfparser.envs == {}
 
         assert dfparser.cmd == 'xyz'
@@ -621,6 +738,9 @@ class TestDockerfileParser(object):
         elif instruction == 'ENV':
             dfparser.envs = new
             assert dfparser.envs == new
+        elif instruction == 'ARG':
+            dfparser.args = new
+            assert dfparser.args == new
         assert set(dfparser.lines[1:]) == set(expected)
 
     @pytest.mark.parametrize(('old_instructions', 'key', 'new_value', 'expected'), [
@@ -667,6 +787,7 @@ class TestDockerfileParser(object):
             del dfparser.envs[key]
             assert not dfparser.labels.get(key)
 
+    @pytest.mark.parametrize('instruction', ('ARG', 'ENV'))
     @pytest.mark.parametrize('separator', [' ', '='])
     @pytest.mark.parametrize(('label', 'expected'), [
         # Expected substitutions
@@ -693,13 +814,16 @@ class TestDockerfileParser(object):
         ('${}', ''),
         ("'\\'$V'\\'", "\\v\\"),
     ])
-    def test_env_replace(self, dfparser, label, expected, separator):
+    def test_arg_env_replace(self, dfparser, instruction, separator, label, expected):
         dfparser.lines = ["FROM fedora\n",
-                          "ENV V=v\n",
-                          "ENV VS='spam maps'\n",
+                          "{0} V=v\n".format(instruction),
+                          "{0} VS='spam maps'\n".format(instruction),
                           "LABEL TEST{0}{1}\n".format(separator, label)]
         assert dfparser.labels['TEST'] == expected
+        with pytest.raises(TypeError):
+            dfparser.labels = ['foo', 'bar']
 
+    @pytest.mark.parametrize('instruction', ('ARG', 'ENV'))
     @pytest.mark.parametrize('separator', [' ', '='])
     @pytest.mark.parametrize(('label', 'expected'), [
         # These would have been substituted with env_replace=True
@@ -710,68 +834,74 @@ class TestDockerfileParser(object):
         ('"$V"-foo', '$V-foo'),
         ('"$V"-❤', '$V-❤'),
     ])
-    def test_env_noreplace(self, dfparser, label, expected, separator):
+    def test_arg_env_noreplace(self, dfparser, instruction, separator, label, expected):
         """
         Make sure environment replacement can be disabled.
         """
         dfparser.env_replace = False
         dfparser.lines = ["FROM fedora\n",
-                          "ENV V=v\n",
+                          "{0} V=v\n".format(instruction),
                           "LABEL TEST{0}{1}\n".format(separator, label)]
         assert dfparser.labels['TEST'] == expected
 
+    @pytest.mark.parametrize('instruction', ('ARG', 'ENV'))
     @pytest.mark.parametrize('label', [
         '${V',
         '"${V"',
         '${{{{V}',
     ])
-    def test_env_invalid(self, dfparser, label):
+    def test_arg_env_invalid(self, dfparser, instruction, label):
         """
         These tests are invalid, but the parser should at least terminate
         even if it raises an exception.
         """
         dfparser.lines = ["FROM fedora\n",
-                          "ENV v=v\n",
+                          "{0} v=v\n".format(instruction),
                           "LABEL TEST={0}\n".format(label)]
         try:
             dfparser.labels['TEST']
         except KeyError:
             pass
 
-    def test_env_multistage(self, dfparser):
+    @pytest.mark.parametrize(('instruction', 'attribute'), (
+        ('ARG', 'args'),
+        ('ENV', 'envs'),
+    ))
+    def test_arg_env_multistage(self, dfparser, instruction, attribute):
         dfparser.content = dedent("""\
             FROM stuff
-            ENV a=keep❤ b=keep❤
+            {instruction} a=keep❤ b=keep❤
 
             FROM base
-            ENV a=delete❤
+            {instruction} a=delete❤
             RUN something
-            """)
+        """.format(instruction=instruction))
 
-        dfparser.envs['a'] = "changed❤"
-        del dfparser.envs['a']
-        dfparser.envs['b'] = "new❤"
+        getattr(dfparser, attribute)['a'] = "changed❤"
+        del getattr(dfparser, attribute)['a']
+        getattr(dfparser, attribute)['b'] = "new❤"
 
         lines = dfparser.lines
-        assert "ENV" in lines[1]
+        assert instruction in lines[1]
         assert "a=keep❤" in lines[1]
         assert "b=new❤" not in lines[1]
         assert "a=delete❤" not in dfparser.content
         assert "b='new❤'" in lines[-1]  # unicode quoted
 
     @pytest.mark.xfail
+    @pytest.mark.parametrize('instruction', ('ARG', 'ENV'))
     @pytest.mark.parametrize(('label', 'expected'), [
         ('${V:-foo}', 'foo'),
         ('${V:+foo}', 'v'),
         ('${UNDEF:+foo}', 'foo'),
         ('${UNDEF:+${V}}', 'v'),
     ])
-    def test_env_replace_notimplemented(self, dfparser, label, expected):
+    def test_arg_env_replace_notimplemented(self, dfparser, instruction, label, expected):
         """
         Test for syntax we don't support yet but should.
         """
         dfparser.lines = ["FROM fedora\n",
-                          "ENV V=v\n",
+                          "{0} V=v\n".format(instruction),
                           "LABEL TEST={0}\n".format(label)]
         assert dfparser.labels['TEST'] == expected
 
@@ -925,26 +1055,48 @@ class TestDockerfileParser(object):
         assert c[3].get_values(context_type=instruction) == {"key": "value❤",
                                                              "key2": "value2❤"}
 
-    def test_context_structure_mixed_env_label(self, dfparser):
+    @pytest.mark.parametrize('instruction', ('ARG', 'ENV'))
+    def test_context_structure_mixed_arg_env_label(self, dfparser, instruction):
         dfparser.content = dedent("""\
             FROM fedora:25
 
-            ENV key=value❤
+            {0} key=value❤
             RUN touch /tmp/a
-            LABEL key2=value2❤""")
+            LABEL key2=value2❤""".format(instruction))
         c = dfparser.context_structure
 
-        assert c[0].get_values(context_type="ENV") == {}
+        assert c[0].get_values(context_type=instruction) == {}
         assert c[0].get_values(context_type="LABEL") == {}
 
-        assert c[1].get_values(context_type="ENV") == {"key": "value❤"}
+        assert c[1].get_values(context_type=instruction) == {"key": "value❤"}
         assert c[1].get_values(context_type="LABEL") == {}
 
-        assert c[2].get_values(context_type="ENV") == {"key": "value❤"}
+        assert c[2].get_values(context_type=instruction) == {"key": "value❤"}
         assert c[2].get_values(context_type="LABEL") == {}
 
-        assert c[3].get_values(context_type="ENV") == {"key": "value❤"}
+        assert c[3].get_values(context_type=instruction) == {"key": "value❤"}
         assert c[3].get_values(context_type="LABEL") == {"key2": "value2❤"}
+
+    def test_context_structure_mixed_top_arg(self, tmpdir):
+        dfp = DockerfileParser(
+            str(tmpdir.realpath()),
+            build_args={"version": "8", "key": "value❤"},
+            env_replace=True)
+        dfp.content = dedent("""\
+            ARG image=centos
+            ARG version=latest
+            FROM $image:$version
+            ARG image
+            ARG key
+            """)
+        c = dfp.context_structure
+
+        assert len(c) == 5
+        assert c[0].get_values(context_type='ARG') == {"image": "centos"}
+        assert c[1].get_values(context_type='ARG') == {"image": "centos", "version": "8"}
+        assert c[2].get_values(context_type='ARG') == {}
+        assert c[3].get_values(context_type='ARG') == {"image": "centos"}
+        assert c[4].get_values(context_type='ARG') == {"image": "centos", "key": "value❤"}
 
     def test_expand_concatenated_variables(self, dfparser):
         dfparser.content = dedent("""\
@@ -954,7 +1106,8 @@ class TestDockerfileParser(object):
         """)
         assert dfparser.labels['component'] == 'name1❤'
 
-    def test_label_env_key(self, dfparser):
+    @pytest.mark.parametrize('instruction', ('ARG', 'ENV'))
+    def test_label_arg_env_key(self, dfparser, instruction):
         """
         Verify keys may be substituted with values containing space.
 
@@ -964,9 +1117,9 @@ class TestDockerfileParser(object):
         """
         dfparser.content = dedent("""\
             FROM scratch
-            ENV FOOBAR="foo bar"
+            {0} FOOBAR="foo bar"
             LABEL "$FOOBAR"="baz"
-        """)
+        """.format(instruction))
         assert dfparser.labels['foo bar'] == 'baz'
 
     @pytest.mark.parametrize('label_value, bad_keyval, envs', [
@@ -993,10 +1146,7 @@ class TestDockerfileParser(object):
                 dfparser.labels  # pylint: disable=pointless-statement
             elif action == 'set':
                 dfparser.labels = {}
-        if six.PY2:
-            msg = exc_info.value.message
-        else:
-            msg = str(exc_info.value)
+        msg = exc_info.value.args[0]
         assert msg == ('Syntax error - can\'t find = in "{word}". '
                        'Must be of the form: name=value'
                        .format(word=bad_keyval))

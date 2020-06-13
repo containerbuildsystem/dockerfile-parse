@@ -46,13 +46,16 @@ class WordSplitter(object):
     SQUOTE = "'"
     DQUOTE = '"'
 
-    def __init__(self, s, envs=None):
+    def __init__(self, s, args=None, envs=None):
         """
         :param s: str, string to process
+        :param args: dict, build arguments to use; if None, do not
+            attempt substitution
         :param envs: dict, environment variables to use; if None, do not
             attempt substitution
         """
         self.stream = StringIO(s)
+        self.args = args
         self.envs = envs
 
         # Initial state
@@ -143,7 +146,7 @@ class WordSplitter(object):
                 return
 
             if (not self.escaped and
-                    self.envs is not None and
+                    (self.envs is not None or self.args is not None) and
                     ch == '$' and
                     self.quotes != self.SQUOTE):
                 while True:
@@ -168,10 +171,10 @@ class WordSplitter(object):
 
                         varname += ch
 
-                    try:
+                    if self.envs is not None and varname in self.envs:
                         word.append(self.envs[varname])
-                    except KeyError:
-                        pass
+                    elif self.args is not None and varname in self.args:
+                        word.append(self.args[varname])
 
                     # Check whether there is another envvar
                     if ch != '$':
@@ -210,13 +213,14 @@ class WordSplitter(object):
                 word.append(ch)
 
 
-def extract_labels_or_envs(env_replace, envs, instruction_value):
+def extract_key_values(env_replace, args, envs, instruction_value):
     words = list(WordSplitter(instruction_value).split(dequote=False))
     key_val_list = []
 
     def substitute_vars(val):
         kwargs = {}
         if env_replace:
+            kwargs['args'] = args
             kwargs['envs'] = envs
 
         return WordSplitter(val, **kwargs).dequote()
@@ -248,65 +252,83 @@ def extract_labels_or_envs(env_replace, envs, instruction_value):
     return key_val_list
 
 
-def get_key_val_dictionary(instruction_value, env_replace=False, envs=None):
-    envs = envs or []
-    return dict(extract_labels_or_envs(instruction_value=instruction_value,
-                                       env_replace=env_replace,
-                                       envs=envs))
+def get_key_val_dictionary(instruction_value, env_replace=False, args=None, envs=None):
+    args = args or {}
+    envs = envs or {}
+    return dict(extract_key_values(instruction_value=instruction_value,
+                                   env_replace=env_replace,
+                                   args=args, envs=envs))
 
 
 class Context(object):
-    def __init__(self, envs=None, labels=None, line_envs=None, line_labels=None):
+    def __init__(self, args=None, envs=None, labels=None,
+                 line_args=None, line_envs=None, line_labels=None):
         """
-        Class representing current state of environment variables and labels.
+        Class representing current state of build arguments, environment variables and labels.
 
+        :param args: dict with arguments valid for this line
+            (all variables defined to this line)
         :param envs: dict with variables valid for this line
             (all variables defined to this line)
         :param labels: dict with labels valid for this line
             (all labels defined to this line)
+        :param line_args: dict with arguments defined on this line
         :param line_envs: dict with variables defined on this line
         :param line_labels: dict with labels defined on this line
         """
+        self.args = args or {}
         self.envs = envs or {}
         self.labels = labels or {}
+        self.line_args = line_args or {}
         self.line_envs = line_envs or {}
         self.line_labels = line_labels or {}
 
     def set_line_value(self, context_type, value):
         """
-        Set value defined on this line ('line_envs'/'line_labels')
-        and update 'envs'/'labels'.
+        Set value defined on this line ('line_args'/'line_envs'/'line_labels')
+        and update 'args'/'envs'/'labels'.
 
-        :param context_type: "ENV" or "LABEL"
+        :param context_type: "ARG" or "ENV" or "LABEL"
         :param value: new value for this line
         """
-        if context_type.upper() == "ENV":
+        if context_type.upper() == "ARG":
+            self.line_args = value
+            self.args.update(value)
+        elif context_type.upper() == "ENV":
             self.line_envs = value
             self.envs.update(value)
         elif context_type.upper() == "LABEL":
             self.line_labels = value
             self.labels.update(value)
+        else:
+            raise ValueError("Unexpected context type: " + context_type)
 
     def get_line_value(self, context_type):
         """
         Get the values defined on this line.
 
-        :param context_type: "ENV" or "LABEL"
+        :param context_type: "ARG" or "ENV" or "LABEL"
         :return: values of given type defined on this line
         """
+        if context_type.upper() == "ARG":
+            return self.line_args
         if context_type.upper() == "ENV":
             return self.line_envs
-        elif context_type.upper() == "LABEL":
+        if context_type.upper() == "LABEL":
             return self.line_labels
+        raise ValueError("Unexpected context type: " + context_type)
 
     def get_values(self, context_type):
         """
         Get the values valid on this line.
 
-        :param context_type: "ENV" or "LABEL"
+        :param context_type: "ARG" or "ENV" or "LABEL"
         :return: values of given type valid on this line
         """
+        if context_type.upper() == "ARG":
+            return self.args
         if context_type.upper() == "ENV":
             return self.envs
-        elif context_type.upper() == "LABEL":
+        if context_type.upper() == "LABEL":
             return self.labels
+        raise ValueError("Unexpected context type: " + context_type)
