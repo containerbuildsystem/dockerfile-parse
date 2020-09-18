@@ -1349,3 +1349,159 @@ class TestDockerfileParser(object):
         df2 = DockerfileParser(tmpdir_path, True)
         assert df2.baseimage == 'scratch'
         assert df2.labels['foo'] == 'bar ❤'
+
+    def _test_escape_directive(self, dfparser, escape_value, used_line_continuation):
+        dfparser.content = dedent("""\
+            #    escape=   {escape_value}
+            FROM base
+            RUN touch foo; {line_cont}
+                touch bar
+            """.format(escape_value=escape_value, line_cont=used_line_continuation))
+        assert dfparser.structure == [
+            {
+                'instruction': COMMENT_INSTRUCTION,
+                'startline': 0,
+                'endline': 0,
+                'content': '#    escape=   {escape_value}\n'.format(
+                    escape_value=escape_value
+                ),
+                'value': 'escape=   {escape_value}'.format(
+                    escape_value=escape_value
+                )
+            },
+            {
+                'instruction': 'FROM',
+                'startline': 1,
+                'endline': 1,
+                'content': 'FROM base\n',
+                'value': 'base'
+            },
+            {
+                'instruction': 'RUN',
+                'startline': 2,
+                'endline': 3,
+                'content': 'RUN touch foo; {line_cont}\n    touch bar\n'.format(
+                                    line_cont=used_line_continuation
+                ),
+                'value': 'touch foo;     touch bar'
+            }
+        ]
+
+    @pytest.mark.parametrize(('escape_value', 'used_line_continuation'), [
+        ('\\', '\\'),
+        ('`', '`'),
+    ])
+    def test_escape_directive(self, dfparser, escape_value, used_line_continuation):
+        self._test_escape_directive(dfparser, escape_value, used_line_continuation)
+
+    @pytest.mark.xfail
+    @pytest.mark.parametrize(('escape_value', 'used_line_continuation'), [
+        ('\\', '`'),
+        ('`', '\\')
+    ])
+    def test_escape_directive_xfail(self, dfparser, escape_value, used_line_continuation):
+        self._test_escape_directive(dfparser, escape_value, used_line_continuation)
+
+    def _test_escape_after_syntax_directive(self, dfparser, escape_value, used_line_continuation):
+        dfparser.content = dedent("""\
+            # syntax=ubuntu
+            #    escape=   {escape_value}
+            FROM base
+            RUN touch foo; {line_cont}
+                touch bar
+            """.format(escape_value=escape_value, line_cont=used_line_continuation))
+        assert dfparser.structure == [
+            {
+                'instruction': COMMENT_INSTRUCTION,
+                'startline': 0,
+                'endline': 0,
+                'content': '# syntax=ubuntu\n',
+                'value': 'syntax=ubuntu',
+            },
+            {
+                'instruction': COMMENT_INSTRUCTION,
+                'startline': 1,
+                'endline': 1,
+                'content': '#    escape=   {escape_value}\n'.format(
+                    escape_value=escape_value
+                ),
+                'value': 'escape=   {escape_value}'.format(
+                    escape_value=escape_value
+                )
+            },
+            {
+                'instruction': 'FROM',
+                'startline': 2,
+                'endline': 2,
+                'content': 'FROM base\n',
+                'value': 'base'
+            },
+            {
+                'instruction': 'RUN',
+                'startline': 3,
+                'endline': 4,
+                'content': 'RUN touch foo; {line_cont}\n    touch bar\n'.format(
+                                    line_cont=used_line_continuation
+                ),
+                'value': 'touch foo;     touch bar'
+            }
+        ]
+
+    @pytest.mark.parametrize(('escape_value', 'used_line_continuation'), [
+        ('\\', '\\'),
+        ('`', '`'),
+    ])
+    def test_escape_after_syntax_directive(self, dfparser, escape_value, used_line_continuation):
+        self._test_escape_after_syntax_directive(dfparser, escape_value, used_line_continuation)
+
+    @pytest.mark.xfail
+    @pytest.mark.parametrize(('escape_value', 'used_line_continuation'), [
+        ('\\', '`'),
+        ('`', '\\'),
+    ])
+    def test_escape_after_syntax_directive_xfail(
+            self,
+            dfparser,
+            escape_value,
+            used_line_continuation
+    ):
+        self._test_escape_after_syntax_directive(dfparser, escape_value, used_line_continuation)
+
+    def test_escape_directive_ignore_after_comment(self, dfparser):
+        dfparser.content = dedent("""\
+            # comment
+            # escape=`
+            FROM base
+            RUN touch foo; \\
+                touch bar
+            """)
+        assert dfparser.structure == [
+            {
+                'instruction': COMMENT_INSTRUCTION,
+                'startline': 0,
+                'endline': 0,
+                'content': '# comment\n',
+                'value': 'comment',
+            },
+            {
+                'instruction': COMMENT_INSTRUCTION,
+                'startline': 1,
+                'endline': 1,
+                'content': '# escape=`\n',
+                'value': 'escape=`',
+            },
+            {
+                'instruction': 'FROM',
+                'startline': 2,
+                'endline': 2,
+                'content': 'FROM base\n',
+                'value': 'base'
+            },
+            {
+                'instruction': 'RUN',
+                'startline': 3,
+                'endline': 4,
+                'content': 'RUN touch foo; \\\n    touch bar\n',
+                'value': 'touch foo;     touch bar'
+            }
+        ]
