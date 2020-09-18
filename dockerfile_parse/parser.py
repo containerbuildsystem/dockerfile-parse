@@ -239,11 +239,11 @@ class DockerfileParser(object):
              "value": "yum -y update && yum clean all"}
         ]
         """
-        def _rstrip_backslash(l):
-            l = l.rstrip()
-            if l.endswith('\\'):
-                return l[:-1]
-            return l
+        def _rstrip_eol(text, line_continuation_char='\\'):
+            text = text.rstrip()
+            if text.endswith(line_continuation_char):
+                return text[:-1]
+            return text
 
         def _create_instruction_dict(instruction=None, value=None):
             return {
@@ -262,15 +262,36 @@ class DockerfileParser(object):
 
         instructions = []
         lineno = -1
+        line_continuation_char = '\\'
         insnre = re.compile(r'^\s*(\S+)\s+(.*)$')  # matched group is insn
         contre = re.compile(r'^.*\\\s*$')          # line continues?
         commentre = re.compile(r'^\s*#')           # line is a comment?
+        directive_possible = True
+        # escape directive regex
+        escape_directive_re = re.compile(r'^\s*#\s*escape\s*=\s*(\\|`)\s*$', re.I)
+        # syntax directive regex
+        syntax_directive_re = re.compile(r'^\s*#\s*syntax\s*=\s*(.*)\s*$', re.I)
 
         in_continuation = False
         current_instruction = None
 
         for line in self.lines:
             lineno += 1
+
+            if directive_possible:
+                # once support for python versions before 3.8 is dropped use walrus operator
+                if escape_directive_re.match(line):
+                    # Do the matching twice if there is a directive to avoid doing the matching
+                    # for other lines
+                    match = escape_directive_re.match(line)
+                    line_continuation_char = match.group(1)
+                    contre = re.compile(r'^.*' + re.escape(match.group(1)) + r'\s*$')
+                elif syntax_directive_re.match(line):
+                    # Currently no information for the syntax directive is stored it is still
+                    # necessary to detect escape directives after a syntax directive
+                    pass
+                else:
+                    directive_possible = False
 
             # It is necessary to keep instructions and comment parsing separate,
             # as a multi-line instruction can be interjected with comments.
@@ -288,7 +309,7 @@ class DockerfileParser(object):
                         continue
                     current_instruction = _create_instruction_dict(
                         instruction=m.groups()[0].upper(),
-                        value=_rstrip_backslash(m.groups()[1])
+                        value=_rstrip_eol(m.groups()[1], line_continuation_char)
                     )
                 else:
                     current_instruction['content'] += line
@@ -296,9 +317,10 @@ class DockerfileParser(object):
 
                     # pylint: disable=unsupported-assignment-operation
                     if current_instruction['value']:
-                        current_instruction['value'] += _rstrip_backslash(line)
+                        current_instruction['value'] += _rstrip_eol(line, line_continuation_char)
                     else:
-                        current_instruction['value'] = _rstrip_backslash(line.lstrip())
+                        current_instruction['value'] = _rstrip_eol(line.lstrip(),
+                                                                   line_continuation_char)
                     # pylint: enable=unsupported-assignment-operation
 
                 in_continuation = contre.match(line)
