@@ -1,5 +1,0 @@
-linters:
-  flake8:
-    max-line-length: 99
-  shellcheck:
-    shell: bash
