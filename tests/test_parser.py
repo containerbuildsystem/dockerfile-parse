@@ -69,7 +69,6 @@ class TestDockerfileParser(object):
         with pytest.raises(ValueError):
             context.set_line_value('FOO', {})
 
-
     def test_dockerfileparser(self, dfparser, tmpdir):
         df_content = dedent("""\
             FROM fedora
@@ -149,7 +148,7 @@ class TestDockerfileParser(object):
                           "RUN command4 && \\\n",
                           "# interrupt RUN\n",          # comment interrupting multi-line RUN
                           "    command5\n",
-                        ]
+                          ]
 
         assert dfparser.structure == [
                                       {'instruction': COMMENT_INSTRUCTION,

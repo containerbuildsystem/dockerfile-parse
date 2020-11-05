@@ -259,7 +259,6 @@ class DockerfileParser(object):
             line = re.sub(r'\n', '', line)
             return line
 
-
         instructions = []
         lineno = -1
         line_continuation_char = '\\'
