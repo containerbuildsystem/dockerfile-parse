@@ -1,0 +1,100 @@
+name: Linters
+
+on:
+  pull_request:
+
+  push:
+    branches:
+      - master
+      - release_*
+
+jobs:
+  bandit:
+    name: Bandit analyzer for Python ${{ matrix.os.python }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - name: centos
+            version: 7
+            python: 2
+            engine: docker
+
+          - name: fedora
+            version: 32
+            python: 3
+            engine: docker
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - run: ./test.sh
+        env:
+          OS: ${{ matrix.os.name }}
+          OS_VERSION: ${{ matrix.os.version }}
+          PYTHON_VERSION: ${{ matrix.os.python }}
+          ENGINE: ${{ matrix.os.engine }}
+          ACTION: bandit
+
+  flake8:
+    name: Flake8 for Python 3
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+
+      - name: Run flake8 for Python 3
+        uses: containerbuildsystem/actions/flake8@master
+
+  markdownlint:
+    name: Markdownlint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+
+      - name: Run markdownlint
+        uses: containerbuildsystem/actions/markdownlint@master
+
+  pylint:
+    name: Pylint analyzer for Python ${{ matrix.os.python }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        os:
+          - name: fedora
+            version: 29
+            python: 2
+            engine: docker
+
+          - name: fedora
+            version: 32
+            python: 3
+            engine: docker
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: ./test.sh
+        env:
+          OS: ${{ matrix.os.name }}
+          OS_VERSION: ${{ matrix.os.version }}
+          PYTHON_VERSION: ${{ matrix.os.python }}
+          ENGINE: ${{ matrix.os.engine }}
+          ACTION: pylint
+
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v2
+
+      - name: Run ShellCheck
+        uses: containerbuildsystem/actions/shellcheck@master
