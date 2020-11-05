@@ -17,8 +17,8 @@ from .constants import PY2
 
 def b2u(string):
     """ bytes to unicode """
-    if (isinstance(string, bytes) or
-        (PY2 and isinstance(string, str))):
+    if (isinstance(string, bytes)
+            or (PY2 and isinstance(string, str))):
         return string.decode('utf-8')
     return string
 

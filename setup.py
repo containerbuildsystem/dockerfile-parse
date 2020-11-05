@@ -14,6 +14,7 @@ import io
 from os import path
 from setuptools import setup, find_packages
 
+
 def _get_requirements(path):
     try:
         with open(path) as f:
@@ -22,11 +23,13 @@ def _get_requirements(path):
         raise RuntimeError("Can't open file with requirements: %s", repr(ex))
     return [p.strip() for p in packages if not re.match(r"^\s*#", p)]
 
+
 def _install_requirements():
     requirements = _get_requirements('requirements.txt')
     if sys.version_info[0] >= 3:
         requirements += _get_requirements('requirements-py3.txt')
     return requirements
+
 
 here = path.abspath(path.dirname(__file__))
 
@@ -65,4 +68,3 @@ setup(
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
 )
-
