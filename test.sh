@@ -10,13 +10,6 @@ ACTION=${ACTION:="test"}
 IMAGE="$OS:$OS_VERSION"
 CONTAINER_NAME="dockerfile-parse-$OS-$OS_VERSION-py$PYTHON_VERSION"
 
-if [[ $ACTION == "markdownlint" ]]; then
-  IMAGE="ruby"
-  CONTAINER_NAME="dockerfile-parse-$ACTION-$IMAGE"
-fi
-
-RUN="$ENGINE exec -ti $CONTAINER_NAME"
-
 # Use arrays to prevent globbing and word splitting
 engine_mounts=(-v "$PWD":"$PWD":z)
 for dir in ${EXTRA_MOUNT:-}; do
@@ -32,78 +25,68 @@ elif [[ $($ENGINE ps -q -f name="$CONTAINER_NAME" | wc -l) -eq 0 ]]; then
 fi
 
 function setup_dfp() {
-  # Pull fedora images from registry.fedoraproject.org
-  if [[ $OS == "fedora" ]]; then
-    IMAGE="registry.fedoraproject.org/$IMAGE"
-  fi
-
-  if [[ $OS == "fedora" ]]; then
-    PIP_PKG="python$PYTHON_VERSION-pip"
-    PIP="pip$PYTHON_VERSION"
-    PKG="dnf"
-    PKG_EXTRA="dnf-plugins-core"
-    BUILDDEP="dnf builddep"
-    PYTHON="python$PYTHON_VERSION"
-  else
+  RUN="$ENGINE exec -i $CONTAINER_NAME"
+  if [[ $OS == "centos" ]]; then
+    PYTHON="python"
     PIP_PKG="python-pip"
     PIP="pip"
     PKG="yum"
-    PKG_EXTRA="yum-utils epel-release"
+    PKG_EXTRA=(yum-utils epel-release)
     BUILDDEP="yum-builddep"
-    PYTHON="python"
+  else
+    PYTHON="python$PYTHON_VERSION"
+    PIP_PKG="$PYTHON-pip"
+    PIP="pip$PYTHON_VERSION"
+    PKG="dnf"
+    PKG_EXTRA=(dnf-plugins-core "$PYTHON"-pylint)
+    BUILDDEP=(dnf builddep)
   fi
 
+  PIP_INST=("$PIP" install --index-url "${PYPI_INDEX:-https://pypi.org/simple}")
+
   # Install dependencies
-  $RUN $PKG install -y $PKG_EXTRA
-  $RUN $BUILDDEP -y python-dockerfile-parse.spec
-  if [[ $OS != "fedora" ]]; then
+  $RUN $PKG install -y "${PKG_EXTRA[@]}"
+  $RUN $"${BUILDDEP[@]}" -y python-dockerfile-parse.spec
+  if [[ $OS = "centos" ]]; then
     # Install dependecies for test, as check is disabled for rhel
     $RUN yum install -y python-six
   fi
 
-  # Install package
+  # Install pip package
   $RUN $PKG install -y $PIP_PKG
   if [[ $PYTHON_VERSION == 3 ]]; then
     # https://fedoraproject.org/wiki/Changes/Making_sudo_pip_safe
     $RUN mkdir -p /usr/local/lib/python3.6/site-packages/
   fi
+
+  # Setuptools install dfp from source
   $RUN $PYTHON setup.py install
 
   # CentOS needs to have setuptools updates to make pytest-cov work
-  if [[ $OS != "fedora" ]]; then
-    $RUN $PIP install -U pip
-    $RUN $PIP install -U setuptools
-
-    # Watch out for https://github.com/pypa/setuptools/issues/937
-    $RUN curl -O https://bootstrap.pypa.io/2.6/get-pip.py
-    $RUN $PYTHON get-pip.py
+  if [[ $OS = "centos" && $OS_VERSION == 7  ]]; then
+    $RUN "${PIP_INST[@]}" -U pip
+    $RUN "${PIP_INST[@]}" -U setuptools
   fi
 
-  $RUN $PIP install -r tests/requirements.txt
-
-  if [[ $PYTHON_VERSION -gt 2 ]]; then $RUN $PIP install -r requirements-py3.txt; fi
+  # Pip install packages for unit tests
+  $RUN "${PIP_INST[@]}" -r tests/requirements.txt
 }
 
 case ${ACTION} in
 "test")
   setup_dfp
-  TEST_CMD="py.test --cov dockerfile_parse --cov-report html -vv tests"
+  TEST_CMD="coverage run --source=osbs -m pytest tests"
+  ;;
+"pylint")
+  setup_dfp
+  PACKAGES='dockerfile_parse tests'
+  TEST_CMD="${PYTHON} -m pylint ${PACKAGES}"
   ;;
 "bandit")
   setup_dfp
   $RUN $PKG install -y git-core
   $RUN $PIP install bandit
   TEST_CMD="bandit-baseline -r dockerfile_parse -ll -ii"
-  ;;
-"pylint")
-  setup_dfp
-  $RUN $PKG install -y "${PYTHON}-pylint"
-  PACKAGES='dockerfile_parse tests'
-  TEST_CMD="${PYTHON} -m pylint ${PACKAGES}"
-  ;;
-"markdownlint")
-  $RUN gem install mdl
-  TEST_CMD="mdl -g ."
   ;;
 *)
   echo "Unknown action: ${ACTION}"
@@ -112,6 +95,7 @@ case ${ACTION} in
 esac
 
 # Run tests
+# shellcheck disable=SC2086
 $RUN ${TEST_CMD} "$@"
 
 echo "To run tests again:"
