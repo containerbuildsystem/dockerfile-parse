@@ -1,7 +1,10 @@
 # dockerfile-parse
 
-[![build status]][build status link]
-[![coverage status]][coverage status link]
+[![unittests status badge]][unittests status link]
+[![coveralls status badge]][coveralls status link]
+[![lgtm python badge]][lgtm python link]
+[![lgtm alerts badge]][lgtm alerts link]
+[![linters status badge]][linters status link]
 
 Python library for parsing Dockerfile files.
 
@@ -47,7 +50,13 @@ dfp.baseimage = 'centos:7'
 print(dfp.content)
 ```
 
-[build status]: https://travis-ci.org/containerbuildsystem/dockerfile-parse.svg?branch=master
-[build status link]: https://travis-ci.org/containerbuildsystem/dockerfile-parse
-[coverage status]: https://coveralls.io/repos/containerbuildsystem/dockerfile-parse/badge.svg?branch=master&service=github
-[coverage status link]: https://coveralls.io/github/containerbuildsystem/dockerfile-parse?branch=master
+[coveralls status badge]: https://coveralls.io/repos/containerbuildsystem/dockerfile-parse/badge.svg?branch=master
+[coveralls status link]: https://coveralls.io/r/containerbuildsystem/dockerfile-parse?branch=master
+[lgtm python badge]: https://img.shields.io/lgtm/grade/python/g/containerbuildsystem/dockerfile-parse.svg?logo=lgtm&logoWidth=18
+[lgtm python link]: https://lgtm.com/projects/g/containerbuildsystem/dockerfile-parse/context:python
+[lgtm alerts badge]: https://img.shields.io/lgtm/alerts/g/containerbuildsystem/dockerfile-parse.svg?logo=lgtm&logoWidth=18
+[lgtm alerts link]: https://lgtm.com/projects/g/containerbuildsystem/dockerfile-parse/alerts
+[linters status badge]: https://github.com/containerbuildsystem/dockerfile-parse/workflows/Linters/badge.svg?branch=master&event=push
+[linters status link]: https://github.com/containerbuildsystem/dockerfile-parse/actions?query=event%3Apush+branch%3Amaster+workflow%3A%22Linters%22
+[unittests status badge]: https://github.com/containerbuildsystem/dockerfile-parse/workflows/Unittests/badge.svg?branch=master&event=push
+[unittests status link]: https://github.com/containerbuildsystem/dockerfile-parse/actions?query=event%3Apush+branch%3Amaster+workflow%3A%22Unittests%22
