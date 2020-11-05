@@ -75,7 +75,7 @@ function setup_dfp() {
 case ${ACTION} in
 "test")
   setup_dfp
-  TEST_CMD="coverage run --source=osbs -m pytest tests"
+  TEST_CMD="coverage run --source=osbs -m pytest tests -ra --color=auto --html=__pytest_reports/dfp-unit-tests.html --self-contained-html"
   ;;
 "pylint")
   setup_dfp
