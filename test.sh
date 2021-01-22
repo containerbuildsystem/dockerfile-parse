@@ -85,7 +85,7 @@ case ${ACTION} in
 "bandit")
   setup_dfp
   $RUN $PKG install -y git-core
-  $RUN $PIP install bandit
+  $RUN $PIP install 'bandit<1.6.3'
   TEST_CMD="bandit-baseline -r dockerfile_parse -ll -ii"
   ;;
 *)
