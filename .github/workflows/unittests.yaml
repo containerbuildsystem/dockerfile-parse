@@ -23,12 +23,12 @@ jobs:
             engine: docker
 
           - name: fedora
-            version: 31
+            version: 32
             python: 3
             engine: docker
 
           - name: fedora
-            version: 32
+            version: 33
             python: 3
             engine: docker
 
