@@ -60,7 +60,7 @@ jobs:
           pip3 install --upgrade pip
           pip3 install --upgrade setuptools
           pip3 install --upgrade coveralls
-          /home/runner/.local/bin/coveralls
+          /home/runner/.local/bin/coveralls --service=github
 
   coveralls-finish:
     name: Finish coveralls-python
@@ -72,6 +72,6 @@ jobs:
         pip3 install --upgrade pip
         pip3 install --upgrade setuptools
         pip3 install --upgrade coveralls
-        /home/runner/.local/bin/coveralls --finish
+        /home/runner/.local/bin/coveralls --service=github --finish
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
