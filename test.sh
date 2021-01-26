@@ -64,7 +64,7 @@ function setup_dfp() {
 
   # CentOS needs to have setuptools updates to make pytest-cov work
   if [[ $OS = "centos" && $OS_VERSION == 7  ]]; then
-    $RUN "${PIP_INST[@]}" -U pip
+    $RUN "${PIP_INST[@]}" -U 'pip<21.0'
     $RUN "${PIP_INST[@]}" -U setuptools
   fi
 
