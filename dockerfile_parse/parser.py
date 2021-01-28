@@ -91,7 +91,9 @@ class DockerfileParser(object):
                  build_args=None):
         """
         Initialize source of Dockerfile
-        :param path: path to (directory with) Dockerfile
+        :param path: path to (directory with) Dockerfile; if not provided,
+                     and fileobj is not provided, the current working
+                     directory will be used
         :param cache_content: cache Dockerfile content inside DockerfileParser
         :param env_replace: return content with variables replaced
         :param parent_env: python dict of inherited env vars from parent image
