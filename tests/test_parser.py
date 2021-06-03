@@ -1176,6 +1176,8 @@ class TestDockerfileParser(object):
             ENV h i
             From scratch
             LABEL type=scratch2
+            From scratch as foo
+            LABEL type=scratch3
             """)
         dfparser.add_lines("something new ❤", all_stages=True, skip_scratch=True, at_start=at_start)
 
@@ -1186,7 +1188,7 @@ class TestDockerfileParser(object):
             assert "something new ❤" in dfparser.lines[2]
             assert "something new ❤" in dfparser.lines[8]
         assert len([line for line in dfparser.lines if "something new ❤" in line]) == 2
-        assert len(dfparser.lines) == 11
+        assert len(dfparser.lines) == 13
 
     def test_add_lines_stage_edge(self, dfparser):
         dfparser.content = "# no from or newline ❤"

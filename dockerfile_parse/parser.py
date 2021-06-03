@@ -767,7 +767,8 @@ class DockerfileParser(object):
         for stage in range(len(froms)-2, -1, -1):  # e.g. 0 for single or 2, 1, 0 for 3 stages
             start, finish = froms[stage], froms[stage+1]
             linenum = start['endline'] + 1 if at_start else finish['startline']
-            if skip_scratch and froms[stage]['value'] == 'scratch':
+            image, _ = image_from(froms[stage].get('value') or '')
+            if skip_scratch and image == 'scratch':
                 continue
             df_lines[linenum:linenum] = lines
 
