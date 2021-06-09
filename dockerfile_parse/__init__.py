@@ -11,6 +11,6 @@ of the BSD license. See the LICENSE file for details.
 #
 
 from __future__ import absolute_import
-from .parser import DockerfileParser  # noqa: F401
+from .parser import DockerfileParser
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"

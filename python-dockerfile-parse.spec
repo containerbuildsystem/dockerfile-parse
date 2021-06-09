@@ -16,7 +16,7 @@
 %global modname %(n=%{srcname}; echo ${n//-/_})
 
 Name:           python-%{srcname}
-Version:        1.1.0
+Version:        1.2.0
 Release:        1%{?dist}
 
 Summary:        Python library for Dockerfile manipulation
@@ -118,6 +118,9 @@ py.test-%{python3_version} -v tests
 %endif
 
 %changelog
+* Wed Jun 09 2021 Robert Cerven <rcerven@redhat.com> 1.2.0-1
+- new upstream release: 1.2.0
+
 * Fri Nov 06 2020 Robert Cerven <rcerven@redhat.com> 1.1.0-1
 - new upstream release: 1.1.0
 
