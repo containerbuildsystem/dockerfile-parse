@@ -165,7 +165,7 @@ class DockerfileParser(object):
 
         try:
             with self._open_dockerfile('rb') as dockerfile:
-                lines = [b2u(l) for l in dockerfile.readlines()]
+                lines = [b2u(line) for line in dockerfile.readlines()]
                 if self.cache_content:
                     self.cached_content = ''.join(lines)
                 return lines
@@ -180,11 +180,11 @@ class DockerfileParser(object):
         :param lines: list of lines to be written to Dockerfile
         """
         if self.cache_content:
-            self.cached_content = ''.join([b2u(l) for l in lines])
+            self.cached_content = ''.join(b2u(line) for line in lines)
 
         try:
             with self._open_dockerfile('wb') as dockerfile:
-                dockerfile.writelines([u2b(l) for l in lines])
+                dockerfile.writelines(u2b(line) for line in lines)
         except (IOError, OSError) as ex:
             logger.error("Couldn't write lines to dockerfile: %r", ex)
             raise
