@@ -32,7 +32,8 @@ sudo pip install .
 from pprint import pprint
 from dockerfile_parse import DockerfileParser
 
-dfp = DockerfileParser()
+# Init parser without autosave (default: True)
+dfp = DockerfileParser(autosave=False)
 dfp.content = """\
 From  base
 LABEL foo="bar baz"

@@ -88,6 +88,7 @@ class DockerfileParser(object):
                  env_replace=True,
                  parent_env=None,
                  fileobj=None,
+                 autosave=True,
                  build_args=None):
         """
         Initialize source of Dockerfile
@@ -99,10 +100,12 @@ class DockerfileParser(object):
         :param parent_env: python dict of inherited env vars from parent image
         :param fileobj: seekable file-like object containing Dockerfile content
                         as bytes (will be truncated on write)
+        :param autosave: save Dockerfile content automatically
         :param build_args: python dict of build args used when building image
         """
 
         self.fileobj = fileobj
+        self.autosave = autosave
 
         if self.fileobj is not None:
             if path is not None:
@@ -182,12 +185,13 @@ class DockerfileParser(object):
         if self.cache_content:
             self.cached_content = ''.join(b2u(line) for line in lines)
 
-        try:
-            with self._open_dockerfile('wb') as dockerfile:
-                dockerfile.writelines(u2b(line) for line in lines)
-        except (IOError, OSError) as ex:
-            logger.error("Couldn't write lines to dockerfile: %r", ex)
-            raise
+        if self.autosave:
+            try:
+                with self._open_dockerfile('wb') as dockerfile:
+                    dockerfile.writelines(u2b(line) for line in lines)
+            except (IOError, OSError) as ex:
+                logger.error("Couldn't write lines to dockerfile: %r", ex)
+                raise
 
     @property
     def content(self):
@@ -216,12 +220,13 @@ class DockerfileParser(object):
         if self.cache_content:
             self.cached_content = b2u(content)
 
-        try:
-            with self._open_dockerfile('wb') as dockerfile:
-                dockerfile.write(u2b(content))
-        except (IOError, OSError) as ex:
-            logger.error("Couldn't write content to dockerfile: %r", ex)
-            raise
+        if self.autosave:
+            try:
+                with self._open_dockerfile('wb') as dockerfile:
+                    dockerfile.write(u2b(content))
+            except (IOError, OSError) as ex:
+                logger.error("Couldn't write content to dockerfile: %r", ex)
+                raise
 
     @property
     def structure(self):
