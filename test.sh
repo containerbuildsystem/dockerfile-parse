@@ -85,6 +85,8 @@ case ${ACTION} in
 "bandit")
   setup_dfp
   $RUN $PKG install -y git-core
+  # workaround for https://github.com/actions/checkout/issues/766
+  $RUN git config --global --add safe.directory "$PWD"
   $RUN $PIP install 'bandit<1.6.3'
   TEST_CMD="bandit-baseline -r dockerfile_parse -ll -ii"
   ;;
