@@ -20,6 +20,9 @@ from textwrap import dedent
 
 from dockerfile_parse import DockerfileParser
 from dockerfile_parse.parser import image_from
+from dockerfile_parse.parser import tag_from
+from dockerfile_parse.parser import tag_to
+from dockerfile_parse.parser import valid_tag
 from dockerfile_parse.constants import COMMENT_INSTRUCTION
 from dockerfile_parse.util import b2u, u2b, Context
 from tests.fixtures import dfparser, instruction
@@ -312,11 +315,22 @@ class TestDockerfileParser(object):
                           "LABEL a b\n"]
         assert dfparser.baseimage == 'fedora:latest'
 
+    def test_get_basetag_from_df(self,dfparser):
+        dfparser.lines = ["From fedora:latest\n",
+                          "LABEL a b\n"]
+        assert dfparser.basetag == 'latest'
+        
     def test_get_baseimg_from_arg(self, dfparser):
         dfparser.lines = ["ARG BASE=fedora:latest\n",
                           "FROM $BASE\n",
                           "LABEL a b\n"]
         assert dfparser.baseimage == 'fedora:latest'
+        
+    def test_get_basetag_from_arg(self, dfparser):
+        dfparser.lines = ["ARG BASE=fedora:latest\n",
+                          "FROM $BASE\n",
+                          "LABEL a b\n"]
+        assert dfparser.basetag == 'latest'
 
     def test_get_baseimg_from_build_arg(self, tmpdir):
         tmpdir_path = str(tmpdir.realpath())
@@ -328,6 +342,16 @@ class TestDockerfileParser(object):
         assert dfp.baseimage == 'fedora:latest'
         assert not dfp.args
 
+    def test_get_basetag_from_build_arg(self, tmpdir):
+        tmpdir_path = str(tmpdir.realpath())
+        b_args = {"BASE": "fedora:latest"}
+        dfp = DockerfileParser(tmpdir_path, env_replace=True, build_args=b_args)
+        dfp.lines = ["ARG BASE=centos:latest\n",
+                     "FROM $BASE\n",
+                     "LABEL a b\n"]
+        assert dfp.basetag == 'latest'
+        assert not dfp.args
+        
     def test_set_no_baseimage(self, dfparser):
         dfparser.lines = []
         with pytest.raises(RuntimeError):
@@ -468,6 +492,114 @@ class TestDockerfileParser(object):
         result = image_from(from_value)
         assert result == expect
 
+    @pytest.mark.parametrize(('from_value', 'expect'), [
+        (
+            "",
+            (None, None),
+        ),
+        (
+            "    ",
+            (None, None),
+        ), (
+            "   foo",
+            ('foo', None),
+        ), (
+            "foo:bar as baz   ",
+            ('foo', 'bar'),
+        ), (
+            "foo as baz",
+            ('foo', None),
+        ), (
+            "foo and some other junk",  # we won't judge
+            ('foo', None),
+        ), (
+            "registry.example.com:5000/foo/bar",
+            ('registry.example.com:5000/foo/bar', None),
+        ), (
+            "registry.example.com:5000/foo/bar:baz",
+            ('registry.example.com:5000/foo/bar', "baz"),
+        ), (
+            "localhost:5000/foo/bar:baz",
+            ('localhost:5000/foo/bar', "baz"),
+        )
+    ])
+    def test_tag_from(self, from_value, expect):
+        result = tag_from(from_value)
+        assert result == expect
+        
+    @pytest.mark.parametrize(('from_image', 'from_tag', 'expect'), [
+        (
+            "    ",
+            " ",
+            "",
+        ),(
+            "foo",
+            None,
+            'foo',
+        ), (
+            "foo",
+            "bar",
+            'foo:bar',
+        ), (
+            "foo",
+            "",
+            'foo',
+        ), (
+            "foo:bar",
+            "baz",
+            'foo:baz',
+        ), (
+            "registry.example.com:5000/foo/bar",
+            "baz",
+            'registry.example.com:5000/foo/bar:baz',
+        ),
+        (
+            "localhost:5000/foo/bar",
+            "baz",
+            'localhost:5000/foo/bar:baz',
+        ),
+        (
+            "nonvalid1@%registry.example.com:5000/foo/bar",
+            "baz",
+            'nonvalid1@%registry.example.com:5000/foo/bar:baz',
+        ),
+        (
+            "registry.example.com:5000/foo/bar",
+            "baz",
+            'registry.example.com:5000/foo/bar:baz',
+        ),(
+            "registry.example.com:5000/foo/bar:baz",
+            "bap",
+            'registry.example.com:5000/foo/bar:bap',
+        )
+    ])
+    def test_tag_to(self, from_image, from_tag, expect):
+        result = tag_to(from_image, from_tag)
+        assert result == expect
+        
+        
+    @pytest.mark.parametrize(('tag', 'expect'), [
+        (
+            "Tag",
+            True
+        ),(
+            "tAg.",
+            True
+        ), (
+            "tag-tag",
+            True
+        ), (
+            ".notTag",
+            False
+        ), (
+            "not/tag",
+            False
+        )
+    ])
+    def test_valid_tag(self, tag, expect):
+        result = valid_tag(tag)
+        assert result == expect
+        
     def test_parent_images(self, dfparser):
         FROM = ('my-builder:latest', 'rhel7:7.5')
         template = dedent("""\
@@ -507,8 +639,9 @@ class TestDockerfileParser(object):
         assert dfparser.content.count('FROM') == 4
 
     def test_modify_instruction(self, dfparser):
-        FROM = ('ubuntu', 'fedora:❤')
+        FROM = ('ubuntu', 'fedora:theBest')
         CMD = ('old❤cmd', 'new❤command')
+        TAG = ('theBest', 'newtag')
         df_content = dedent("""\
             FROM {0}
             CMD {1}""").format(FROM[0], CMD[0])
@@ -518,6 +651,10 @@ class TestDockerfileParser(object):
         assert dfparser.baseimage == FROM[0]
         dfparser.baseimage = FROM[1]
         assert dfparser.baseimage == FROM[1]
+        
+        assert dfparser.basetag == TAG[0]
+        dfparser.basetag = TAG[1]
+        assert dfparser.basetag == TAG[1]
 
         assert dfparser.cmd == CMD[0]
         dfparser.cmd = CMD[1]

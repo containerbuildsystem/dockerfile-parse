@@ -401,7 +401,7 @@ class DockerfileParser(object):
             lines[instr['startline']:instr['endline']+1] = [instr['content']]
 
         self.lines = lines
-
+    
     @property
     def is_multistage(self):
         return len(self.parent_images) > 1
@@ -428,6 +428,21 @@ class DockerfileParser(object):
             raise RuntimeError('No stage defined to set base image on')
         images[-1] = new_image
         self.parent_images = images
+    
+    @property
+    def basetag(self):
+        """
+        :return: tag of base image, i.e. tag of base image
+        """
+        _, tag = tag_from(self.baseimage)
+        return tag
+    
+    @basetag.setter
+    def basetag(self, new_tag):
+        """
+        only change the tag of the final stage FROM instruction
+        """
+        self.baseimage = tag_to(self.baseimage, new_tag)
 
     @property
     def cmd(self):
@@ -882,7 +897,42 @@ def image_from(from_value):
     match = re.match(regex, from_value)
     return match.group('image', 'name') if match else (None, None)
 
+def tag_from(from_value):
+    """
+    :param from_value: string like "registry:port/image:tag AS name"
+    :return: tuple of the image and tag e.g. ("image", "tag")
+    """
+    
+    image, _ = image_from(from_value)
+    bare, _, tag = image.rpartition(":") if image and ":" in image else (None, None, None)
+    
+    # check if a tag was actually present
+    if not valid_tag(tag) or not bare:
+        return (image, None)
+        
+    return (bare, tag)
 
+def valid_tag(tag):
+    """
+    :param tag to be checked for validity
+    :return: true or false
+    """
+    regex = re.compile(r"""(?x)            # readable, case-insensitive regex
+        ^(?P<tag>[a-zA-Z0-9\_][a-zA-Z0-9\.\_\-]*)$  # valid tag format (alphanumeric characters, numbers . _ and - (. and - not leading))
+        """)
+    match = re.match(regex, tag) if tag else None
+    return True if match and match.group('tag') and len(match.group('tag')) < 128 else False
+    
+def tag_to(image, new_tag):
+    """
+    :param image: string like "image:tag" or "image"
+    :param tag: string like "latest"
+    :return: string like "image:new_tag" or "image" if no tag was given
+    """
+    
+    bare, _ = tag_from(image)
+    return ":".join(filter(None, [bare.strip() if bare else None, new_tag.strip() if new_tag else None]))
+    
 def _endline(line):
     """
     Make sure the line ends with a single newline.
