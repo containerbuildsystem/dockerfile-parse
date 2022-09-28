@@ -869,10 +869,12 @@ def image_from(from_value):
     :param from_value: string like "image:tag" or "image:tag AS name"
     :return: tuple of the image and stage name, e.g. ("image:tag", None)
     """
-    regex = re.compile(r"""(?xi)     # readable, case-insensitive regex
-        \s*                          # ignore leading whitespace
-        (?P<image> \S+ )             # image and optional tag
-        (?:                          # optional "AS name" clause for stage
+    regex = re.compile(r"""(?xi)        # readable, case-insensitive regex
+        \s*                             # ignore leading whitespace
+        (?P<platform> --platform=\S+)?  # optional platform parameter
+        \s*                             # more whitespaces
+        (?P<image> \S+ )                # image and optional tag
+        (?:                             # optional "AS name" clause for stage
             \s+ AS \s+
             (?P<name> \S+ )
         )?
