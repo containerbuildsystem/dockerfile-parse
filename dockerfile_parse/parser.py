@@ -274,7 +274,7 @@ class DockerfileParser(object):
         syntax_directive_re = re.compile(r'^\s*#\s*syntax\s*=\s*(.*)\s*$', re.I)
 
         in_continuation = False
-        current_instruction = None
+        current_instruction = {}
 
         for line in self.lines:
             lineno += 1
@@ -316,16 +316,14 @@ class DockerfileParser(object):
                     current_instruction['content'] += line
                     current_instruction['endline'] = lineno
 
-                    # pylint: disable=unsupported-assignment-operation
                     if current_instruction['value']:
                         current_instruction['value'] += _rstrip_eol(line, line_continuation_char)
                     else:
                         current_instruction['value'] = _rstrip_eol(line.lstrip(),
                                                                    line_continuation_char)
-                    # pylint: enable=unsupported-assignment-operation
 
                 in_continuation = contre.match(line)
-                if not in_continuation and current_instruction is not None:
+                if not in_continuation and current_instruction:
                     instructions.append(current_instruction)
 
         return instructions
