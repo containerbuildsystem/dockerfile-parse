@@ -10,6 +10,7 @@ of the BSD license. See the LICENSE file for details.
 from __future__ import unicode_literals, absolute_import
 
 import inspect
+import io
 import json
 import os
 import pytest
@@ -909,7 +910,7 @@ class TestDockerfileParser(object):
             DockerfileParser(path='.', fileobj=six.StringIO())
 
     def test_nonseekable_fileobj(self):
-        with pytest.raises(AttributeError):
+        with pytest.raises((AttributeError, io.UnsupportedOperation)):
             DockerfileParser(fileobj=sys.stdin)
 
     def test_context_structure_per_line(self, dfparser, instruction):
