@@ -312,7 +312,6 @@ class TestDockerfileParser(object):
         dfparser.lines = ["From fedora:latest\n",
                           "LABEL a b\n"]
         assert dfparser.baseimage == 'fedora:latest'
-        
 
     def test_get_baseimg_from_df_with_platform(self, dfparser):
         dfparser.lines = ["From --platform=linux/amd64 fedora:latest\n",
