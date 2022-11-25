@@ -45,7 +45,7 @@ jobs:
         run: ./test.sh
 
       - name: Upload pytest html report
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         if: failure()
         with:
           path: __pytest_reports/dfp-unit-tests.html
