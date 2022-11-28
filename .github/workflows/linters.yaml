@@ -2,7 +2,9 @@ name: Linters
 
 on:
   pull_request:
-
+    branches:
+      - master
+      - release_*
   push:
     branches:
       - master
