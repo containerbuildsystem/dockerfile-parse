@@ -2,12 +2,18 @@ name: Unittests
 
 on:
   pull_request:
-
+    branches:
+      - master
+      - release_*
+    paths:
+      - '**.py'
   push:
     branches:
       - master
       - release_*
-
+    paths:
+      - '**.py'
+      
 jobs:
   test:
     name: Python ${{ matrix.os.python }} tests on ${{ matrix.os.name }}-${{ matrix.os.version }}
