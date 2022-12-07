@@ -45,6 +45,7 @@ disable=I,
         protected-access,
         redefined-outer-name,
         too-many-lines,
+        unspecified-encoding,  # many false positives
         wrong-import-order,
         wrong-import-position
 
