@@ -7,15 +7,12 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 """
 
-from __future__ import unicode_literals, absolute_import
-
 import inspect
 import io
 import json
 import os
 import pytest
 import re
-import six
 import sys
 from textwrap import dedent
 
@@ -54,12 +51,12 @@ class TestDockerfileParser(object):
         assert setup_py_version == module_version
 
     def test_util_b2u(self):
-        assert isinstance(b2u(u'string'), six.text_type)
-        assert isinstance(b2u(b'byte'), six.text_type)
+        assert isinstance(b2u(u'string'), str)
+        assert isinstance(b2u(b'byte'), str)
 
     def test_util_u2b(self):
-        assert isinstance(u2b(u'string'), six.binary_type)
-        assert isinstance(u2b(b'byte'), six.binary_type)
+        assert isinstance(u2b(u'string'), bytes)
+        assert isinstance(u2b(b'byte'), bytes)
 
     def test_util_context_exceptions(self):
         context = Context()
@@ -80,13 +77,13 @@ class TestDockerfileParser(object):
         dfparser.content = df_content
         assert dfparser.content == df_content
         assert dfparser.lines == df_lines
-        assert [isinstance(line, six.text_type) for line in dfparser.lines]
+        assert [isinstance(line, str) for line in dfparser.lines]
 
         dfparser.content = ""
         dfparser.lines = df_lines
         assert dfparser.content == df_content
         assert dfparser.lines == df_lines
-        assert [isinstance(line, six.text_type) for line in dfparser.lines]
+        assert [isinstance(line, str) for line in dfparser.lines]
 
         dockerfile = os.path.join(str(tmpdir), 'Dockerfile')
         with open(dockerfile, 'wb') as fp:
@@ -94,7 +91,7 @@ class TestDockerfileParser(object):
         dfparser = DockerfileParser(dockerfile)
         assert dfparser.content == df_content
         assert dfparser.lines == df_lines
-        assert [isinstance(line, six.text_type) for line in dfparser.lines]
+        assert [isinstance(line, str) for line in dfparser.lines]
 
     def test_dockerfileparser_exceptions(self, tmpdir):
         df_content = dedent("""\
@@ -912,7 +909,7 @@ class TestDockerfileParser(object):
 
     def test_path_and_fileobj_together(self):
         with pytest.raises(ValueError):
-            DockerfileParser(path='.', fileobj=six.StringIO())
+            DockerfileParser(path='.', fileobj=io.StringIO())
 
     def test_nonseekable_fileobj(self):
         with pytest.raises((AttributeError, io.UnsupportedOperation)):
