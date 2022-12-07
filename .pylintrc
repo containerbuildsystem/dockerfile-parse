@@ -33,6 +33,7 @@ disable=I,
         bad-option-value,
         bad-whitespace,  # pep8, nice to have
         comprehension-escape,
+        consider-using-f-string,  # nice to have
         import-outside-toplevel,
         invalid-name,
         len-as-condition,
