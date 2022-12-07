@@ -51,11 +51,11 @@ class TestDockerfileParser(object):
         assert setup_py_version == module_version
 
     def test_util_b2u(self):
-        assert isinstance(b2u(u'string'), str)
+        assert isinstance(b2u('string'), str)
         assert isinstance(b2u(b'byte'), str)
 
     def test_util_u2b(self):
-        assert isinstance(u2b(u'string'), bytes)
+        assert isinstance(u2b('string'), bytes)
         assert isinstance(u2b(b'byte'), bytes)
 
     def test_util_context_exceptions(self):
