@@ -7,15 +7,12 @@ This software may be modified and distributed under the terms
 of the BSD license. See the LICENSE file for details.
 """
 
-from __future__ import print_function, unicode_literals, absolute_import
-
 import json
 import logging
 import os
 import re
 from contextlib import contextmanager
-from six import string_types
-from six.moves import shlex_quote as quote
+from shlex import quote
 
 from .constants import DOCKERFILE_FILENAME, COMMENT_INSTRUCTION
 from .util import (b2u, extract_key_values, get_key_val_dictionary,
@@ -800,7 +797,7 @@ class DockerfileParser(object):
                 anchor = anchor['endline']
             else:
                 anchor = anchor['startline']
-        elif isinstance(anchor, string_types):  # line contents
+        elif isinstance(anchor, str):  # line contents
             matches = [index for index, text in enumerate(df_lines) if text == anchor]
             if not matches:
                 raise RuntimeError("Cannot find line in the build file:\n" + anchor)

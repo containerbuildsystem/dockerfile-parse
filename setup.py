@@ -23,11 +23,6 @@ def _get_requirements(path):
     return [p.strip() for p in packages if not re.match(r"^\s*#", p)]
 
 
-def _install_requirements():
-    requirements = _get_requirements('requirements.txt')
-    return requirements
-
-
 here = path.abspath(path.dirname(__file__))
 
 # Get the long description from the README file
@@ -46,7 +41,7 @@ setup(
     license="BSD",
     packages=find_packages(exclude=["tests"]),
     python_requires='>=3.6',
-    install_requires=_install_requirements(),
+    install_requires=[],
     tests_require=_get_requirements('tests/requirements.txt'),
     classifiers=[
         'Development Status :: 5 - Production/Stable',
