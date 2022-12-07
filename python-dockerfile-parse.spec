@@ -1,15 +1,3 @@
-%if 0%{?rhel} && 0%{?rhel} <= 7
-%bcond_with python3
-%else
-%bcond_without python3
-%endif
-
-%if (0%{?fedora} && 0%{?fedora} >= 30) || (0%{?rhel} && 0%{?rhel} >= 8)
-%bcond_with python2
-%else
-%bcond_without python2
-%endif
-
 %bcond_without tests
 
 %global srcname dockerfile-parse
@@ -29,30 +17,6 @@ BuildArch:      noarch
 %description
 %{summary}.
 
-%if %{with python2}
-%package -n python2-%{srcname}
-Summary:        %{summary}
-%{?python_provide:%python_provide python2-%{srcname}}
-BuildRequires:  python2-devel
-%if 0%{?rhel} && 0%{?rhel} <= 7
-BuildRequires:  python-six
-BuildRequires:  python-setuptools
-BuildRequires:  pytest
-Requires:  python-six
-%else
-BuildRequires:  python2-six
-BuildRequires:  python2-setuptools
-BuildRequires:  python2-pytest
-Requires:  python2-six
-%endif
-
-%description -n python2-%{srcname}
-%{summary}.
-
-Python 2 version.
-%endif # python2 pkg
-
-%if %{with python3}
 %package -n python3-%{srcname}
 Summary:        %{summary}
 %{?python_provide:%python_provide python3-%{srcname}}
@@ -68,54 +32,29 @@ Requires:  python3-six
 %{summary}.
 
 Python 3 version.
-%endif #python3 pkg
 
 %prep
 %setup -q
 
 
 %build
-%if %{with python2}
-%py2_build
-%endif # python2
-%if %{with python3}
 %py3_build
-%endif
 
 %install
-%if %{with python2}
-%py2_install
-%endif #python2
-%if %{with python3}
 %py3_install
-%endif
 
 %if %{with tests}
 %check
 export LANG=C.UTF-8
-%if %{with python2}
-py.test-%{python2_version} -v tests
-%endif # python2
-%if %{with python3}
 py.test-%{python3_version} -v tests
-%endif # python3
 %endif
 
-%if %{with python2}
-%files -n python2-%{srcname}
-%license LICENSE
-%doc README.md
-%{python2_sitelib}/%{modname}-*.egg-info/
-%{python2_sitelib}/%{modname}/
-%endif
-
-%if %{with python3}
 %files -n python3-%{srcname}
 %license LICENSE
 %doc README.md
 %{python3_sitelib}/%{modname}-*.egg-info/
 %{python3_sitelib}/%{modname}/
-%endif
+
 
 %changelog
 * Wed Jun 09 2021 Robert Cerven <rcerven@redhat.com> 1.2.0-1
