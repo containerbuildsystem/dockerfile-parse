@@ -54,14 +54,3 @@ jobs:
 
       - name: Run markdownlint
         uses: containerbuildsystem/actions/markdownlint@master
-
-  shellcheck:
-    name: Shellcheck
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v3
-
-      - name: Run ShellCheck
-        uses: containerbuildsystem/actions/shellcheck@master
