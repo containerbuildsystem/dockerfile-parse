@@ -45,7 +45,7 @@ setup(
     url='https://github.com/containerbuildsystem/dockerfile-parse',
     license="BSD",
     packages=find_packages(exclude=["tests"]),
-    python_requires='>3.4',
+    python_requires='>=3.6',
     install_requires=_install_requirements(),
     tests_require=_get_requirements('tests/requirements.txt'),
     classifiers=[
@@ -56,10 +56,11 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: Implementation :: CPython',
         'Topic :: Software Development :: Libraries :: Python Modules'
     ],
