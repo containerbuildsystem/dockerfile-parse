@@ -8,7 +8,6 @@ of the BSD license. See the LICENSE file for details.
 """
 
 import re
-import sys
 import io
 
 from os import path
@@ -26,8 +25,6 @@ def _get_requirements(path):
 
 def _install_requirements():
     requirements = _get_requirements('requirements.txt')
-    if sys.version_info[0] >= 3:
-        requirements += _get_requirements('requirements-py3.txt')
     return requirements
 
 
@@ -48,6 +45,7 @@ setup(
     url='https://github.com/containerbuildsystem/dockerfile-parse',
     license="BSD",
     packages=find_packages(exclude=["tests"]),
+    python_requires='>3.4',
     install_requires=_install_requirements(),
     tests_require=_get_requirements('tests/requirements.txt'),
     classifiers=[
@@ -57,8 +55,6 @@ setup(
         'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
