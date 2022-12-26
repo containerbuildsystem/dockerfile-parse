@@ -17,3 +17,7 @@ jobs:
     targets:
     - fedora-all
     - epel-8-x86_64
+
+srpm_build_deps:
+  - python3-pip
+  - python3-setuptools_scm
