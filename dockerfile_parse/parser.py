@@ -16,7 +16,7 @@ from shlex import quote
 
 from .constants import DOCKERFILE_FILENAME, COMMENT_INSTRUCTION
 from .util import (b2u, extract_key_values, get_key_val_dictionary,
-                   u2b, Context, WordSplitter)
+                   u2b, Context, WordSplitter, ImageName)
 
 
 logger = logging.getLogger(__name__)
@@ -877,7 +877,9 @@ def image_from(from_value):
         )?
         """)
     match = re.match(regex, from_value)
-    return match.group('image', 'name') if match else (None, None)
+    image = ImageName.parse(match.group('image')) if match else None
+    name = match.group('name') if match else None
+    return image, name
 
 
 def _endline(line):

@@ -19,13 +19,123 @@ from textwrap import dedent
 from dockerfile_parse import DockerfileParser
 from dockerfile_parse.parser import image_from
 from dockerfile_parse.constants import COMMENT_INSTRUCTION
-from dockerfile_parse.util import b2u, u2b, Context
+from dockerfile_parse.util import b2u, u2b, Context, ImageName
 from tests.fixtures import dfparser, instruction
 
 NON_ASCII = "žluťoučký"
 # flake8 does not understand fixtures:
 dfparser = dfparser  # pylint: disable=self-assigning-variable
 instruction = instruction  # pylint: disable=self-assigning-variable
+
+
+@pytest.mark.parametrize(('image_string', 'dictionary'), [
+    (
+            "   ",
+            {"namespace": None, "registry": None, "tag": None, "repo": None},
+    ), (
+            "registry.org/namespace/repo:tag",
+            {"namespace": "namespace", "registry": "registry.org", "tag": "tag", "repo": "repo"},
+    ), (
+            "/namespace/repo:tag",
+            {"namespace": "namespace", "registry": None, "tag": "tag", "repo": "repo"},
+    ), (
+            "registry.org/repo:tag",
+            {"namespace": None, "registry": "registry.org", "tag": "tag", "repo": "repo"},
+    ), (
+            "registry.org/repo",
+            {"namespace": None, "registry": "registry.org", "tag": None, "repo": "repo"},
+    ), (
+            "registry.org/repo@sha256:hash",
+            {"namespace": None, "registry": "registry.org", "tag": "sha256:hash", "repo": "repo"},
+    )
+])
+class TestImageName(object):
+    def test_util_image_name_parse(self, image_string, dictionary):
+        image = ImageName.parse(image_string)
+        assert image.namespace == dictionary["namespace"]
+        assert image.registry == dictionary["registry"]
+        assert image.tag == dictionary["tag"]
+        assert image.repo == dictionary["repo"]
+
+    def test_util_image_name_get_repo(self, image_string, dictionary):
+        image = ImageName.parse(image_string)
+        repo = "/".join(filter(None, (dictionary["namespace"], dictionary["repo"])))
+        assert image.get_repo() == (repo if repo != "" else None)
+        assert image.get_repo(explicit_namespace=True) == "{0}/{1}".format(
+            dictionary["namespace"] if dictionary["namespace"] else "library", dictionary["repo"])
+
+    def test_util_image_name_to_str(self, image_string, dictionary):
+        image = ImageName.parse(image_string)
+        if dictionary["repo"] is None:
+            with pytest.raises(RuntimeError):
+                image.to_str()
+        else:
+            assert image.to_str() == image_string.lstrip('/')
+            assert image.to_str() == (image_string.lstrip('/') if image_string else None)
+            assert image.to_str(explicit_tag=True) == \
+                   image_string.lstrip('/') + (':latest' if dictionary["tag"] is None else "")
+
+    def test_image_name_hash(self, image_string, dictionary):
+        image = ImageName.parse(image_string)
+        if dictionary["repo"] is None:
+            with pytest.raises(RuntimeError):
+                hash(image)
+        else:
+            hash(image)
+
+    def test_image_name_repr(self, image_string, dictionary):
+        # so linter won't trip on unused argument
+        del dictionary
+        image = ImageName.parse(image_string)
+        repr(image)
+
+    def test_image_name_comparison(self, image_string, dictionary):
+        # make sure that "==" is implemented correctly on both Python major releases
+        i1 = ImageName.parse(image_string)
+        i2 = ImageName(registry=dictionary["registry"], namespace=dictionary["namespace"],
+                       repo=dictionary["repo"],
+                       tag=dictionary["tag"])
+        assert i1 == i2
+
+        i2 = ImageName(registry='foo.com', namespace='spam', repo='bar', tag='2')
+        # pylint: disable=unneeded-not
+        assert not i1 == i2
+
+        i1 = ImageName.parse(i2)
+        assert i1 == i2
+
+        i1 = i2.copy()
+        assert i1 == i2
+
+
+@pytest.mark.parametrize(('repo', 'organization', 'enclosed_repo'), (
+        ('fedora', 'spam', 'spam/fedora'),
+        ('spam/fedora', 'spam', 'spam/fedora'),
+        ('spam/fedora', 'maps', 'maps/spam-fedora'),
+))
+@pytest.mark.parametrize('registry', (
+        'example.registry.com',
+        'example.registry.com:8888',
+        None,
+))
+@pytest.mark.parametrize('tag', ('bacon', None))
+def test_image_name_enclose(repo, organization, enclosed_repo, registry, tag):
+    reference = repo
+    if tag:
+        reference = '{}:{}'.format(repo, tag)
+    if registry:
+        reference = '{}/{}'.format(registry, reference)
+
+    image_name = ImageName.parse(reference)
+    assert image_name.get_repo() == repo
+    assert image_name.registry == registry
+    assert image_name.tag == tag
+
+    image_name.enclose(organization)
+    assert image_name.get_repo() == enclosed_repo
+    # Verify that registry and tag are unaffected
+    assert image_name.registry == registry
+    assert image_name.tag == tag
 
 
 class TestDockerfileParser(object):
