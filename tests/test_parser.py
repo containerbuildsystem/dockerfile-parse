@@ -20,12 +20,8 @@ from dockerfile_parse import DockerfileParser
 from dockerfile_parse.parser import image_from
 from dockerfile_parse.constants import COMMENT_INSTRUCTION
 from dockerfile_parse.util import b2u, u2b, Context, ImageName
-from tests.fixtures import dfparser, instruction
 
 NON_ASCII = "žluťoučký"
-# flake8 does not understand fixtures:
-dfparser = dfparser  # pylint: disable=self-assigning-variable
-instruction = instruction  # pylint: disable=self-assigning-variable
 
 
 @pytest.mark.parametrize(('image_string', 'dictionary'), [
