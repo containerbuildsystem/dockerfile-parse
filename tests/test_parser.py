@@ -17,7 +17,7 @@ import sys
 from textwrap import dedent
 
 from dockerfile_parse import DockerfileParser
-from dockerfile_parse.parser import image_from
+from dockerfile_parse.parser import image_from, image_name_from
 from dockerfile_parse.constants import COMMENT_INSTRUCTION
 from dockerfile_parse.util import b2u, u2b, Context, ImageName
 
@@ -573,9 +573,12 @@ class TestDockerfileParser(object):
             ('registry.example.com:5000/foo/bar:baz', None),
         )
     ])
-    def test_image_from(self, from_value, expect):
-        result = image_from(from_value)
+    def test_image_name_from(self, from_value, expect):
+        result = image_name_from(from_value)
+        # image_from is deprecated. But we still want to test it.
+        deprecated_result = image_from(from_value)
         assert result == expect
+        assert deprecated_result == expect
 
     def test_parent_images(self, dfparser):
         FROM = ('my-builder:latest', 'rhel7:7.5')
