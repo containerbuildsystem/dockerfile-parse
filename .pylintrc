@@ -76,4 +76,3 @@ ignored-modules=requests.packages,
                 responses,
                 docker,
                 http.client,
-                six.moves
