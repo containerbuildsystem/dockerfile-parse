@@ -24,9 +24,7 @@ BuildRequires:  python3-devel
 BuildRequires:  python3-setuptools
 %if %{with tests}
 BuildRequires:  python3-pytest
-BuildRequires:  python3-six
 %endif
-Requires:  python3-six
 
 %description -n python3-%{srcname}
 %{summary}.

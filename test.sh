@@ -47,10 +47,6 @@ function setup_dfp() {
   # Install dependencies
   $RUN $PKG install -y "${PKG_EXTRA[@]}"
   $RUN $"${BUILDDEP[@]}" -y python-dockerfile-parse.spec
-  if [[ $OS = "centos" ]]; then
-    # Install dependecies for test, as check is disabled for rhel
-    $RUN yum install -y python-six
-  fi
 
   # Install pip package
   $RUN $PKG install -y $PIP_PKG
