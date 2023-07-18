@@ -37,7 +37,7 @@ class TestDockerfileParser(object):
                 if len(found) == 1:
                     return found[0]
                 else:
-                    raise Exception("Version not found!")
+                    raise RuntimeError("Version not found!")
 
         import dockerfile_parse
         from dockerfile_parse import __version__ as module_version
