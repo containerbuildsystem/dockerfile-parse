@@ -11,12 +11,13 @@ import json
 import logging
 import os
 import re
+import warnings
 from contextlib import contextmanager
 from shlex import quote
 
 from .constants import DOCKERFILE_FILENAME, COMMENT_INSTRUCTION
 from .util import (b2u, extract_key_values, get_key_val_dictionary,
-                   u2b, Context, WordSplitter)
+                   u2b, Context, WordSplitter, ImageName)
 
 
 logger = logging.getLogger(__name__)
@@ -238,6 +239,7 @@ class DockerfileParser(object):
              "value": "yum -y update && yum clean all"}
         ]
         """
+
         def _rstrip_eol(text, line_continuation_char='\\'):
             text = text.rstrip()
             if text.endswith(line_continuation_char):
@@ -262,8 +264,8 @@ class DockerfileParser(object):
         lineno = -1
         line_continuation_char = '\\'
         insnre = re.compile(r'^\s*(\S+)\s+(.*)$')  # matched group is insn
-        contre = re.compile(r'^.*\\\s*$')          # line continues?
-        commentre = re.compile(r'^\s*#')           # line is a comment?
+        contre = re.compile(r'^.*\\\s*$')  # line continues?
+        commentre = re.compile(r'^\s*#')  # line is a comment?
         directive_possible = True
         # escape directive regex
         escape_directive_re = re.compile(r'^\s*#\s*escape\s*=\s*(\\|`)\s*$', re.I)
@@ -354,7 +356,7 @@ class DockerfileParser(object):
                         top_args[key] = value
             elif instr['instruction'] == 'FROM':
                 in_stage = True
-                image, _ = image_from(instr['value'])
+                image, _ = image_name_from(instr['value'])
                 if image is not None:
                     image = WordSplitter(image, args=top_args).dequote()
                     parents.append(image)
@@ -376,7 +378,7 @@ class DockerfileParser(object):
             if instr['instruction'] != 'FROM':
                 continue
 
-            old_image, stage = image_from(instr['value'])
+            old_image, stage = image_name_from(instr['value'])
             if old_image is None:
                 continue  # broken FROM, fixing would just confuse things
             if not parents:
@@ -393,7 +395,7 @@ class DockerfileParser(object):
 
         lines = self.lines
         for instr in reversed(change_instrs):
-            lines[instr['startline']:instr['endline']+1] = [instr['content']]
+            lines[instr['startline']:instr['endline'] + 1] = [instr['content']]
 
         self.lines = lines
 
@@ -416,7 +418,7 @@ class DockerfileParser(object):
         images = []
         for instr in self.structure:
             if instr['instruction'] == 'FROM':
-                image, _ = image_from(instr['value'])
+                image, _ = image_name_from(instr['value'])
                 if image is not None:
                     images.append(image)
         if not images:
@@ -762,7 +764,7 @@ class DockerfileParser(object):
         for stage in range(len(froms)-2, -1, -1):  # e.g. 0 for single or 2, 1, 0 for 3 stages
             start, finish = froms[stage], froms[stage+1]
             linenum = start['endline'] + 1 if at_start else finish['startline']
-            image, _ = image_from(froms[stage].get('value') or '')
+            image, _ = image_name_from(froms[stage].get('value') or '')
             if skip_scratch and image == 'scratch':
                 continue
             df_lines[linenum:linenum] = lines
@@ -866,6 +868,16 @@ def image_from(from_value):
     :param from_value: string like "image:tag" or "image:tag AS name"
     :return: tuple of the image and stage name, e.g. ("image:tag", None)
     """
+    warnings.warn("Use image_name_from instead.", DeprecationWarning)
+    image, name = image_name_from(from_value)
+    return str(image) if image else None, name
+
+
+def image_name_from(from_value):
+    """
+    :param from_value: string like "image:tag" or "image:tag AS name"
+    :return: tuple of the image and stage name, e.g. ("image:tag", None)
+    """
     regex = re.compile(r"""(?xi)        # readable, case-insensitive regex
         \s*                             # ignore leading whitespace
         (?P<platform> --platform=\S+)?  # optional platform parameter
@@ -877,7 +889,9 @@ def image_from(from_value):
         )?
         """)
     match = re.match(regex, from_value)
-    return match.group('image', 'name') if match else (None, None)
+    image = ImageName.parse(match.group('image')) if match else None
+    name = match.group('name') if match else None
+    return image, name
 
 
 def _endline(line):
