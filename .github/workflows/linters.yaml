@@ -19,7 +19,7 @@ jobs:
           - pylint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Set up Python
@@ -39,7 +39,7 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run flake8 for Python 3
         uses: containerbuildsystem/actions/flake8@master
@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Check out repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run markdownlint
         uses: containerbuildsystem/actions/markdownlint@master
