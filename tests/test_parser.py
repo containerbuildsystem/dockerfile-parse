@@ -14,6 +14,7 @@ import os
 import pytest
 import re
 import sys
+from pathlib import Path
 from textwrap import dedent
 
 from dockerfile_parse import DockerfileParser
@@ -1521,3 +1522,18 @@ class TestDockerfileParser(object):
 
         validate = DockerfileParser(path=tmpdir, dockerfile_filename="Containerfile")
         assert validate.baseimage == out.baseimage
+
+    def test_dockerfile_path_compatibility(self, tmpdir):
+        tmpdir = Path(tmpdir)
+        parser = DockerfileParser(path=tmpdir)
+        assert str(parser.dockerfile) == parser.dockerfile_path
+        assert parser.dockerfile == tmpdir / "Dockerfile"
+
+        with (tmpdir / "nothing").open("w+") as testfile:
+            nullparser = DockerfileParser(fileobj=testfile)
+            assert nullparser.dockerfile is None
+            assert nullparser.dockerfile_path is None
+
+        newfile = tmpdir / "nowhere"
+        parser.dockerfile_path = str(newfile)
+        assert parser.dockerfile == newfile
