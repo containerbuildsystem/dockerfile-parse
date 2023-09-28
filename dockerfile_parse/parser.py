@@ -9,8 +9,8 @@ of the BSD license. See the LICENSE file for details.
 
 import json
 import logging
-import os
 import re
+from pathlib import Path
 from contextlib import contextmanager
 from shlex import quote
 
@@ -100,6 +100,7 @@ class DockerfileParser(object):
         """
 
         self.fileobj = fileobj
+        self.dockerfile = None
 
         if self.fileobj is not None:
             if path is not None:
@@ -107,11 +108,11 @@ class DockerfileParser(object):
             else:
                 self.fileobj.seek(0)
         else:
-            path = path or '.'
-            if path.endswith(DOCKERFILE_FILENAME):
-                self.dockerfile_path = path
+            path = Path(path) or Path.cwd()
+            if path.name.endswith(DOCKERFILE_FILENAME):
+                self.dockerfile = path
             else:
-                self.dockerfile_path = os.path.join(path, DOCKERFILE_FILENAME)
+                self.dockerfile = path / DOCKERFILE_FILENAME
 
         self.cache_content = cache_content
         self.cached_content = ''  # unicode string
@@ -149,8 +150,19 @@ class DockerfileParser(object):
             yield self.fileobj
             self.fileobj.seek(0)
         else:
-            with open(self.dockerfile_path, mode) as dockerfile:
+            with self.dockerfile.open(mode) as dockerfile:
                 yield dockerfile
+
+    @property
+    def dockerfile_path(self):
+        """
+        :return: Path to the Dockerfile as a string, or None if using fileobj
+        """
+        return str(self.dockerfile) if self.dockerfile else None
+
+    @dockerfile_path.setter
+    def dockerfile_path(self, value):
+        self.dockerfile = Path(value) if value else None
 
     @property
     def lines(self):
