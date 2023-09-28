@@ -1509,3 +1509,15 @@ class TestDockerfileParser(object):
                 'value': 'touch foo;     touch bar'
             }
         ]
+
+    def test_alt_dockerfile_names(self, tmpdir):
+        tmpdir = Path(tmpdir)
+        content = "FROM fedora:38"
+        out = DockerfileParser(path=tmpdir, dockerfile_filename="Containerfile")
+        out.content = content
+
+        assert out.dockerfile == tmpdir / "Containerfile"
+        assert out.dockerfile.is_file()
+
+        validate = DockerfileParser(path=tmpdir, dockerfile_filename="Containerfile")
+        assert validate.baseimage == out.baseimage
